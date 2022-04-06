@@ -1,0 +1,8 @@
+{
+    "rows"     : 2, 
+    "cols"     : 2,
+    "channels" : 1,
+    "ports_hw" : 1,
+    "ports"    : 4,
+    "description" : "" 
+}

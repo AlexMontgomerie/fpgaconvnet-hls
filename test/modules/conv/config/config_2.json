@@ -1,0 +1,11 @@
+{
+    "rows": 4,
+    "cols": 4,
+    "channels": 2,
+    "filters": 1,
+    "group": 1,
+    "fine": 4,
+    "kernel_size": [3,3],
+    "batch_size": 1,
+    "description": "single filter, 3x3"
+}

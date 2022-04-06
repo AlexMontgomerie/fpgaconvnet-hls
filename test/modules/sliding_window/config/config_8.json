@@ -1,0 +1,13 @@
+{
+    "batch_size" : 1,
+    "rows" : 64,
+    "cols" : 64,
+    "channels" : 8,
+    "pad_top" : 0,
+    "pad_right" : 0,
+    "pad_bottom" : 0,
+    "pad_left" : 0,
+    "stride" : [8,8],
+    "kernel_size" : [8,8],
+    "description" : "dct example"
+}

@@ -1,0 +1,9 @@
+{
+    "batch_size"    : 1,
+    "rows_in"       : 10,
+    "cols_in"       : 10,
+    "channels_in"   : 160,
+    "streams_in"    : 5, 
+    "ports_in"      : 2, 
+    "description"   : "" 
+}

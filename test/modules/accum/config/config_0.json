@@ -1,0 +1,11 @@
+{
+    "rows": 1,
+    "cols": 1,
+    "channels": 32,
+    "filters": 1,
+    "groups": 1,
+    "batch_size": 1,
+    "data_width": 16,
+    "data_int_width": 8,
+    "description": "multi channel, multi filter"
+}

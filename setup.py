@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="fpgaconvnet.hls",
+    name="fpgaconvnet-hls",
     version="0.1.0",
     author="Alex Montgomerie",
     author_email="am9215@ic.ac.uk",
@@ -20,5 +20,8 @@ setuptools.setup(
     ],
     python_requires='>=3.7',
     install_requires=[
+        "fpbinary",
+        "untangle",
+        "numpy"
     ]
 )

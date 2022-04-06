@@ -1,0 +1,8 @@
+{
+    "type": "RELU",
+    "rows": 14,
+    "cols": 14,
+    "channels": 64,
+    "batch_size": 1,
+    "description": "module name: relu, layer name: res3c_branch2a_relu, net name: resnet.prototxt"
+}

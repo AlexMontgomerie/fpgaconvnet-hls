@@ -1,0 +1,11 @@
+{
+    "batch_size"    : 1,
+    "rows_out"      : 10,
+    "cols_out"      : 10,
+    "channels_out"  : 10,
+    "streams_out"   : 1, 
+    "ports_out"     : 1,
+    "weights_reloading_factor"  : 1, 
+    "weights_reloading_index"   : 0, 
+    "description"   : "" 
+}

@@ -2,11 +2,9 @@
 **/*.log
 **/*.init.h
 **/*.config.h
-*/*.caffemodel
 **/__pycache__/
 **.pyc
 .vscode/
-**.caffemodel
 **.jou
 **.onnx
 **.str
