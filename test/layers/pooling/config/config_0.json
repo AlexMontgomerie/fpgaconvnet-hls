@@ -1,0 +1,18 @@
+{
+    "type": "POOLING",
+    "buffer_depth" : 0,
+    "rows_in": 56,
+    "cols_in": 56,
+    "channels_in": 32,
+    "kernel_size": 2,
+    "stride": 2,
+    "pad": 0,
+    "coarse": 1,
+    "coarse_in": 1,
+    "coarse_out": 1,
+    "fine": 1,
+    "pool_type": "max",
+    "batch_size": 1,
+    "data_width": 16,
+    "description": "layer name: pool1, net name: resnet.prototxt"
+}

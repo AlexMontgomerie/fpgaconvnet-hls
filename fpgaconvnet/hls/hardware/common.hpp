@@ -24,22 +24,22 @@
 #define TOSTRING(x) STRINGIFY(x)
 
 #define DIVIDE(a,b) ((const unsigned int) ((a)/(b)))
-// LAYER OPERATIONS
-#define FILTERS_PER_UNIT_3D(filters,channels,coarse_in,coarse_out)    ((int) ((filters*channels)/(coarse_in*coarse_out)))
-#define FILTERS_3D(filters,coarse_in,coarse_out)    ((int) (filters/(coarse_in*coarse_out)))
-#define CHANNELS_3D(channels,coarse_in)             ((int) (channels/coarse_in))
-#define FILTERS_PER_UNIT(filters,coarse)    ((int) (filters/coarse))
+/* // LAYER OPERATIONS */
+/* #define FILTERS_PER_UNIT_3D(filters,channels,coarse_in,coarse_out)    ((int) ((filters*channels)/(coarse_in*coarse_out))) */
+/* #define FILTERS_3D(filters,coarse_in,coarse_out)    ((int) (filters/(coarse_in*coarse_out))) */
+/* #define CHANNELS_3D(channels,coarse_in)             ((int) (channels/coarse_in)) */
+/* #define FILTERS_PER_UNIT(filters,coarse)    ((int) (filters/coarse)) */
 
-#define LAYER_ROWS_OUT(rows,k_size,stride,pad)    ((int)(rows-k_size+2*pad)/stride+1)
-#define LAYER_COLS_OUT(cols,k_size,stride,pad)    ((int)(cols-k_size+2*pad)/stride+1)
+/* #define LAYER_ROWS_OUT(rows,k_size,stride,pad)    ((int)(rows-k_size+2*pad)/stride+1) */
+/* #define LAYER_COLS_OUT(cols,k_size,stride,pad)    ((int)(cols-k_size+2*pad)/stride+1) */
 
-#define GET_SW_ROWS_OUT(rows,k_size,stride,pad_top,pad_bottom)    ((int)(rows-k_size+pad_top+pad_bottom)/stride+1)
-#define GET_SW_COLS_OUT(cols,k_size,stride,pad_left,pad_right)    ((int)(cols-k_size+pad_left+pad_right)/stride+1)
-#define GET_SW_CHANNELS_OUT(channels,stride)                      ((int)(channels/stride))
+/* #define GET_SW_ROWS_OUT(rows,k_size,stride,pad_top,pad_bottom)    ((int)(rows-k_size+pad_top+pad_bottom)/stride+1) */
+/* #define GET_SW_COLS_OUT(cols,k_size,stride,pad_left,pad_right)    ((int)(cols-k_size+pad_left+pad_right)/stride+1) */
+/* #define GET_SW_CHANNELS_OUT(channels,stride)                      ((int)(channels/stride)) */
 
-#define FILTERS_WEIGHT_RELOADING(filters,factor) ((int)(filters/factor))
+/* #define FILTERS_WEIGHT_RELOADING(filters,factor) ((int)(filters/factor)) */
 
-#define CONV_HW_II(fine,k_size)             ((int)((k_size*k_size)/fine))
+/* #define CONV_HW_II(fine,k_size)             ((int)((k_size*k_size)/fine)) */
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 

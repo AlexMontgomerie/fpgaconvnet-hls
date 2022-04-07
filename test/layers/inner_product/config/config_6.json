@@ -1,0 +1,17 @@
+{
+    "type": "CONVOLUTION",
+    "rows": 7,
+    "cols": 7,
+    "channels": 512,
+    "filters": 4096,
+    "coarse_in": 4,
+    "coarse_out": 256,
+    "fine": 49,
+    "size_in": 25088,
+    "size_out": 4096,
+    "rows_out": 1,
+    "cols_out": 1,
+    "channels_out": 4096,
+    "batch_size": 1,
+    "description": "layer name: fc6, net name: vgg16.prototxt"
+}

@@ -14,12 +14,12 @@ import onnx
 import onnxruntime
 import onnx.numpy_helper
 
-import fpgaconvnet_optimiser.tools.graphs as graphs
-import fpgaconvnet_optimiser.tools.layer_enum as layer_enum
-import fpgaconvnet_optimiser.tools.onnx_helper as onnx_helper
-import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2 #REQUIRED EDIT
+import fpgaconvnet.tools.graphs as graphs
+import fpgaconvnet.tools.layer_enum as layer_enum
+import fpgaconvnet.tools.onnx_helper as onnx_helper
+import fpgaconvnet.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 
-from tools.array_init import array_init
+from fpgaconvnet.hls.tools.array_init import array_init
 
 SCALE=256
 

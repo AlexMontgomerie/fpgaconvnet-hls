@@ -1,0 +1,17 @@
+{
+    "type": "BATCH NORM",
+    "buffer_depth" : 0,
+    "rows": 56,
+    "cols": 56,
+    "channels": 64,
+    "coarse": 8,
+    "coarse_in": 8,
+    "coarse_out": 8,
+    "size_in": 200704,
+    "size_out": 200704,
+    "rows_out": 56,
+    "cols_out": 56,
+    "channels_out": 64,
+    "batch_size": 1,
+    "description": "layer name: bn2c_branch2b, net name: resnet.prototxt"
+}

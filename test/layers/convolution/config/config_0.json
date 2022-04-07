@@ -1,0 +1,22 @@
+{
+    "buffer_depth": 0,
+    "rows_in": 10,
+    "cols_in": 10,
+    "channels_in": 1,
+    "filters": 5,
+    "kernel_size": 2,
+    "stride": 1,
+    "groups": 1,
+    "pad": 0,
+    "coarse_in": 1,
+    "coarse_out": 1,
+    "coarse_group": 1,
+    "fine": 1,
+    "wr_factor": 1,
+    "batch_size": 1,
+    "input_width": 16,
+    "acc_width": 30,
+    "weight_width": 16,
+    "output_width": 16,
+    "description": "simple test"
+}

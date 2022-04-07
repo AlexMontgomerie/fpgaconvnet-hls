@@ -3,10 +3,10 @@ TEST_TYPE=all
 
 FPGACONVNET_HLS_PATH=$PWD/../../fpgaconvnet/hls
 
-while getopts ":m:n:cseih" opt; do
+while getopts ":l:n:cseih" opt; do
     case ${opt} in
-        m )
-            MODULE=$OPTARG
+        l )
+            LAYER=$OPTARG
             ;;
         n )
             TEST_NUM=$OPTARG
@@ -27,12 +27,17 @@ while getopts ":m:n:cseih" opt; do
             # implementation
             TEST_TYPE=impl
             ;;
+        a )
+            # implementation
+            TEST_TYPE=all
+            ;;
         h )
-            echo "USAGE: run_test.sh [-m (module)] [-n (test number)] [-c,-s,-e,-i]"
+            echo "USAGE: run_test.sh [-l (layer)] [-n (test number)] [-c,-s,-e,-i,-a]"
             echo "  -c = C simulation"
             echo "  -s = Synthesis"
             echo "  -e = Co-simulation"
             echo "  -i = Implementation"
+            echo "  -a = All"
             exit
             ;;
     esac
@@ -40,39 +45,40 @@ done
 shift $((OPTIND -1))
 
 function run_test {
+
     echo "RUNNING TEST ${1}"
     # GENERATE INPUTS
     mkdir -p data/test_${1}
-    python gen_data.py -c config/config_${1}.json -o $PWD/data/test_${1} -h tb
+    python gen_layer.py -c config/config_${1}.json -o $PWD/data/test_${1} -s src/ -h include/ -t tb/
     # RUN TEST
-    vivado_hls -f ../run_module_hls.tcl "_ -num ${1} -type ${TEST_TYPE} -name ${MODULE}"
+    vivado_hls -f ../run_layer_hls.tcl "_  -num ${1} -type ${TEST_TYPE} -name ${LAYER}"
 
 }
 
-# move to folder
-cd $MODULE
+# Move to folder
+cd $LAYER
 
 if [ $TEST_NUM ]; then
 
-    # run the test
+    # run test
     run_test $TEST_NUM
 
     # generate reports
-    python ../report.py -m $MODULE -n $TEST_NUM
+    python ../report.py -l $LAYER -n $TEST_NUM
 
 else
 
-    # number of tests
+    # NUMBER OF TESTS
     NUM_TEST="$(ls config/ -1U | wc -l)"
-    # iterate over tests
+    # ITERATE OVER TESTS
     for i in $( seq 0 $(($NUM_TEST-1)) ); do
 
-        # run the test
+        # run test
         run_test $i
 
     done
 
-    # generate reports
-    python ../report.py -m $MODULE
+    # GENERATE REPORTS
+    python ../report.py -l $LAYER
 
 fi

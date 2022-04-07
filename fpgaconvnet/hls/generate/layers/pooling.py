@@ -1,9 +1,5 @@
-# import modules
-import os
-import shutil
-
-import generate.modules.sliding_window
-import generate.modules.pool
+import fpgaconvnet.hls.generate.modules.sliding_window as generate_sliding_window
+import fpgaconvnet.hls.generate.modules.pool as generate_pool
 
 pooling_layer_template_header = """#ifndef {NAME}_HPP_
 #define {NAME}_HPP_
@@ -131,7 +127,7 @@ def gen_pooling_layer(name,param,src_path,header_path):
     single_channel = True if param['channels_in'] == 1 else False
 
     # SLIDING WINDOW MODULE INIT
-    sliding_window = generate.modules.sliding_window.gen_sliding_window_module(
+    sliding_window = generate_sliding_window.gen_sliding_window_module(
         name+"_sliding_window",
         "in",
         "out",
@@ -140,7 +136,7 @@ def gen_pooling_layer(name,param,src_path,header_path):
     )
 
     # POOL MODULE INIT
-    pool = generate.modules.pool.gen_pool_module(
+    pool = generate_pool.gen_pool_module(
         name+"_pool",
         "in",
         "out",

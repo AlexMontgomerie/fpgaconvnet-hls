@@ -1,12 +1,8 @@
-# import modules
-import os
-import shutil
-
-import generate.modules.sliding_window
-import generate.modules.fork
-import generate.modules.conv
-import generate.modules.accum
-import generate.modules.glue
+import fpgaconvnet.hls.generate.modules.sliding_window as generate_sliding_window
+import fpgaconvnet.hls.generate.modules.fork as generate_fork
+import fpgaconvnet.hls.generate.modules.conv as generate_conv
+import fpgaconvnet.hls.generate.modules.accum as generate_accum
+import fpgaconvnet.hls.generate.modules.glue as generate_glue
 
 convolution_layer_template_header = """#ifndef {NAME}_HPP_
 #define {NAME}_HPP_
@@ -251,10 +247,10 @@ void {name}(
 
 """
 
-def gen_convolution_layer(name,param,src_path,header_path):
+def gen_convolution_layer(name, param, src_path, header_path):
 
     # SLIDING WINDOW MODULE INIT
-    sliding_window = generate.modules.sliding_window.gen_sliding_window_module(
+    sliding_window = generate_sliding_window.gen_sliding_window_module(
         name+"_sliding_window",
         "in", "out",
         sliding_window_t=f"{name}_input_t",
@@ -262,7 +258,7 @@ def gen_convolution_layer(name,param,src_path,header_path):
     )
 
     # FORK MODULE INIT
-    fork = generate.modules.fork.gen_fork_module(
+    fork = generate_fork.gen_fork_module(
         name+"_fork",
         "in", "out",
         fork_t=f"{name}_input_t",
@@ -270,7 +266,7 @@ def gen_convolution_layer(name,param,src_path,header_path):
     )
 
     # CONV MODULE INIT
-    conv = generate.modules.conv.gen_conv_module(
+    conv = generate_conv.gen_conv_module(
         name+"_conv",
         "in", "weights", "out",
         data_t=f"{name}_input_t",
@@ -280,7 +276,7 @@ def gen_convolution_layer(name,param,src_path,header_path):
     )
 
     # ACCUM MODULE INIT
-    accum = generate.modules.accum.gen_accum_module(
+    accum = generate_accum.gen_accum_module(
         name+"_accum",
         "in", "out",
         accum_t=f"{name}_acc_t",
@@ -288,7 +284,7 @@ def gen_convolution_layer(name,param,src_path,header_path):
     )
 
     # GLUE MODULE INIT
-    glue = generate.modules.glue.gen_glue_module(
+    glue = generate_glue.gen_glue_module(
         name+"_glue",
         "in", "out",
         acc_t=f"{name}_acc_t",

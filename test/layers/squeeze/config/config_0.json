@@ -1,0 +1,12 @@
+{
+    "type": "SQUEEZE",
+    "rows_in": 12,
+    "cols_in": 12,
+    "channels_in": 1024,
+    "coarse_in": 64,
+    "coarse_out": 8,
+    "batch_size": 1,
+    "buffer_depth": 10,
+    "data_width": 16,
+    "description": "module name: fork, layer name: res4f_branch2a, net name: resnet.prototxt"
+}

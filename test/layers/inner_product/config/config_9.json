@@ -1,0 +1,17 @@
+{
+    "type": "CONVOLUTION",
+    "rows": 6,
+    "cols": 6,
+    "channels": 256,
+    "filters": 4096,
+    "coarse_in": 16,
+    "coarse_out": 4,
+    "fine": 1,
+    "size_in": 9216,
+    "size_out": 4096,
+    "rows_out": 1,
+    "cols_out": 1,
+    "channels_out": 4096,
+    "batch_size": 1,
+    "description": "layer name: fc6, net name: alexnet.prototxt"
+}
