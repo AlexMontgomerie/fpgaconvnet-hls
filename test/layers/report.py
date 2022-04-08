@@ -85,5 +85,6 @@ if __name__ == "__main__":
             layer_report.append_table_clk_period(test_num, result_path)
 
     # save report
+    print(layer_report.print_report())
     with open("REPORT.md","w") as f:
-        f.write(layer_report.print_report())
+        f.write(layer_report.print_report(format="github"))

@@ -14,12 +14,19 @@ void accum_top(
 
     // DUT
     accum<
+#if ACCUM_BATCH_SIZE*ACCUM_ROWS*ACCUM_COLS*ACCUM_GROUPS > 1
         ACCUM_BATCH_SIZE,
         ACCUM_ROWS,
         ACCUM_COLS,
+#endif
         ACCUM_CHANNELS,
         ACCUM_FILTERS,
+#if ACCUM_FILTERS_PER_GROUP > 1
+        ACCUM_FILTERS_PER_GROUP,
+#endif
+#if ACCUM_BATCH_SIZE*ACCUM_ROWS*ACCUM_COLS*ACCUM_GROUPS > 1
         ACCUM_GROUPS,
+#endif
         test_accum_t
     >(in,out);
 

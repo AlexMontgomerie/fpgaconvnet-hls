@@ -1,9 +1,9 @@
 {
     "buffer_depth": 0,
-    "rows_in": 1,
-    "cols_in": 1,
+    "rows_in": 10,
+    "cols_in": 10,
     "channels_in": 1,
-    "filters": 1,
+    "filters": 10,
     "kernel_size": 1,
     "stride": 1,
     "groups": 1,
@@ -18,5 +18,5 @@
     "acc_width": 30,
     "weight_width": 16,
     "output_width": 16,
-    "description": "no spatial dim, no channels, no filters. No parallelism. Kernel Size =1"
+    "description": "no channels, No parallelism. Kernel Size =1"
 }

@@ -435,10 +435,9 @@ int checkStreamEqual(
 )
 {
     int err = 0;
-    while(!valid.empty())
-	{
-		if(test.empty())
-		{
+    int index = 0;
+    while(!valid.empty()) {
+		if(test.empty()) {
 			printf("ERROR: empty early\n");
 			return 1;
 		}
@@ -453,10 +452,13 @@ int checkStreamEqual(
 		)
 		{
 			//printf("ERROR: wrong value\n");
-			printf("ERROR: wrong value %f != %f (err=%f)\n",tmp.to_float(), tmp_valid.to_float(), tmp.to_float()-tmp_valid.to_float());
+			printf("(%d) ERROR: wrong value %f != %f (err=%f)\n", index, tmp.to_float(),
+                    tmp_valid.to_float(), tmp.to_float()-tmp_valid.to_float());
 			return 1;
 			err++;
 		}
+        // increment index
+        index++;
 	}
 
 	if(!test.empty())

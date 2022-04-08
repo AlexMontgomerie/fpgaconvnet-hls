@@ -150,7 +150,15 @@ void accum_accumulate(
 
     pixel_loop: for(unsigned int pixel_index=0; pixel_index<batch_size*rows*cols*groups; pixel_index++) {
         filter_loop: for(unsigned int filter_index=0; filter_index<filters_per_group; filter_index++) {
-            accum_accumulate_inner<CHANNELS, FILTERS, GROUPS, accum_t>(in, out, acc, filter_index);
+            channel_loop: for(unsigned int channel_index=0; channel_index<channels_per_group; channel_index++) {
+                #pragma HLS loop_flatten
+                #pragma HLS pipeline II=1 rewind
+                accum_t cache = in[filter_index].read();
+                acc = ( channel_index == 0 ) ?  cache : accum_t(cache + acc);
+                if( channel_index == (channels_per_group-1) ) {
+                    out.write( acc ) ;
+                }
+            }
         }
     }
 }
@@ -191,7 +199,15 @@ void accum_accumulate(
     #pragma HLS dependence variable=acc RAW intra true
 
     pixel_loop: for(unsigned int pixel_index=0; pixel_index<batch_size*rows*cols*groups; pixel_index++) {
-        accum_accumulate_inner<CHANNELS, FILTERS, GROUPS, accum_t>(in, out, acc, 0);
+        channel_loop: for(unsigned int channel_index=0; channel_index<channels_per_group; channel_index++) {
+            #pragma HLS loop_flatten
+            #pragma HLS pipeline II=1 rewind
+            accum_t cache = in[0].read();
+            acc = ( channel_index == 0 ) ?  cache : accum_t(cache + acc);
+            if( channel_index == (channels_per_group-1) ) {
+                out.write( acc ) ;
+            }
+        }
     }
 }
 
@@ -224,7 +240,15 @@ void accum_accumulate(
     #pragma HLS dependence variable=acc RAW intra true
 
     filter_loop: for(unsigned int filter_index=0; filter_index<filters_per_group; filter_index++) {
-        accum_accumulate_inner<CHANNELS, FILTERS, 1, accum_t>(in, out, acc, filter_index);
+        channel_loop: for(unsigned int channel_index=0; channel_index<channels; channel_index++) {
+            #pragma HLS loop_flatten
+            #pragma HLS pipeline II=1 rewind
+            accum_t cache = in[filter_index].read();
+            acc = ( channel_index == 0 ) ?  cache : accum_t(cache + acc);
+            if( channel_index == (channels-1) ) {
+                out.write( acc ) ;
+            }
+        }
     }
 }
 
@@ -245,12 +269,22 @@ void accum_accumulate(
 {
     #pragma HLS INLINE OFF
 
+    const unsigned int channels   = CHANNELS;
+
     // accumulation cache
     accum_t acc = 0;
     #pragma HLS dependence variable=acc WAR intra false
     #pragma HLS dependence variable=acc RAW intra true
 
-    accum_accumulate_inner<CHANNELS, 1, 1, accum_t>(in, out, acc, 0);
+    channel_loop: for(unsigned int channel_index=0; channel_index<channels; channel_index++) {
+        #pragma HLS loop_flatten
+        #pragma HLS pipeline II=1 rewind
+        accum_t cache = in[0].read();
+        acc = ( channel_index == 0 ) ?  cache : accum_t(cache + acc);
+        if( channel_index == (channels-1) ) {
+            out.write( acc ) ;
+        }
+    }
 }
 
 /**
@@ -276,15 +310,18 @@ void accum(
     #pragma HLS INLINE OFF
 
     // get all constant parameters
+    const unsigned int channels   = CHANNELS;
     const unsigned int filters    = FILTERS;
     const unsigned int groups     = GROUPS;
-    const unsigned int filters_per_group  = DIVIDE(filters ,groups);
+    const unsigned int filters_per_group  = DIVIDE(filters, groups);
+    const unsigned int channels_per_group = DIVIDE(channels, groups);
 
     #pragma HLS STREAM variable=in
     #pragma HLS STREAM variable=out
 
     // re-ordered stream
     stream_t(accum_t) reorder[filters_per_group];
+    #pragma HLS STREAM variable=reorder
     #pragma HLS array_partition variable=reorder complete dim=0
     DO_PRAGMA(HLS STREAM variable=reorder depth=channels_per_group+1)
 
@@ -295,6 +332,7 @@ void accum(
         COLS,
         CHANNELS,
         FILTERS,
+        FILTERS_PER_GROUP,
         GROUPS,
         accum_t
     >(in, reorder);
@@ -305,6 +343,7 @@ void accum(
         COLS,
         CHANNELS,
         FILTERS,
+        FILTERS_PER_GROUP,
         GROUPS,
         accum_t
     >(reorder, out);
@@ -334,9 +373,11 @@ void accum(
     #pragma HLS INLINE OFF
 
     // get all constant parameters
+    const unsigned int channels   = CHANNELS;
     const unsigned int filters    = FILTERS;
     const unsigned int groups     = GROUPS;
     const unsigned int filters_per_group  = filters;
+    const unsigned int channels_per_group = DIVIDE(channels, groups);
 
     #pragma HLS STREAM variable=in
     #pragma HLS STREAM variable=out
@@ -345,6 +386,7 @@ void accum(
     stream_t(accum_t) reorder[filters_per_group];
     #pragma HLS STREAM variable=reorder
     #pragma HLS array_partition variable=reorder complete dim=0
+    DO_PRAGMA(HLS STREAM variable=reorder depth=channels_per_group+1)
 
     #pragma HLS DATAFLOW
     accum_reorder<
@@ -390,6 +432,7 @@ void accum(
 
     // get all constant parameters
     const unsigned int filters_per_group  = FILTERS;
+    const unsigned int channels = CHANNELS;
 
     #pragma HLS STREAM variable=in
     #pragma HLS STREAM variable=out
@@ -398,6 +441,7 @@ void accum(
     stream_t(accum_t) reorder[filters_per_group];
     #pragma HLS STREAM variable=reorder
     #pragma HLS array_partition variable=reorder complete dim=0
+    DO_PRAGMA(HLS STREAM variable=reorder depth=channels+1)
 
     #pragma HLS DATAFLOW
     accum_reorder<
@@ -441,10 +485,13 @@ void accum(
     #pragma HLS STREAM variable=in
     #pragma HLS STREAM variable=out
 
+    const unsigned int channels = CHANNELS;
+
     // re-ordered stream
     stream_t(accum_t) reorder[1];
     #pragma HLS stream variable=reorder
     #pragma HLS array_partition variable=reorder complete dim=0
+    DO_PRAGMA(HLS STREAM variable=reorder depth=channels+1)
 
     #pragma HLS DATAFLOW
     accum_reorder<
