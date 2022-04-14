@@ -5,13 +5,13 @@ import csv
 import copy
 
 sys.path.append('..')
-sys.path.append(os.environ.get("FPGACONVNET_HLS"))
-
-from fpgaconvnet_optimiser.models.layers.InnerProductLayer import InnerProductLayer
-import generate.layers.inner_product
 from Layer import Layer
-from tools.onnx_data import ONNXData
-from tools.array_init import array_init
+
+from fpgaconvnet.models.layers.InnerProductLayer import InnerProductLayer
+import fpgaconvnet.hls.generate.layers.inner_product as inner_product
+
+from fpgaconvnet.hls.tools.onnx_data import ONNXData
+from fpgaconvnet.hls.tools.array_init import array_init
 
 class InnerProductLayerTB(Layer):
     def __init__(self):
@@ -90,7 +90,7 @@ class InnerProductLayerTB(Layer):
 
     # update layer generation
     def gen_layer(self,src_path,header_path):
-        generate.layers.inner_product.gen_inner_product_layer(
+        inner_product.gen_inner_product_layer(
             self.name,
             self.param,
             os.path.join(src_path,'{}.cpp'.format(self.name)),

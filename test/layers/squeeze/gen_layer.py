@@ -3,12 +3,10 @@ import os
 import numpy as np
 
 sys.path.append("..")
-sys.path.append(os.environ.get("FPGACONVNET_OPTIMISER"))
-sys.path.append(os.environ.get("FPGACONVNET_HLS"))
-
-from fpgaconvnet_optimiser.models.layers.SqueezeLayer import SqueezeLayer
-import generate.layers.squeeze
 from Layer import Layer
+
+from fpgaconvnet.models.layers.SqueezeLayer import SqueezeLayer
+import fpgaconvnet.hls.generate.layers.squeeze as squeeze
 
 class SqueezeLayerTB(Layer):
     def __init__(self):
@@ -54,7 +52,7 @@ class SqueezeLayerTB(Layer):
 
     # update layer generation
     def gen_layer(self,src_path,header_path):
-        generate.layers.squeeze.gen_squeeze_layer(
+        squeeze.gen_squeeze_layer(
             self.name,
             self.param,
             os.path.join(src_path,'{}.cpp'.format(self.name)),

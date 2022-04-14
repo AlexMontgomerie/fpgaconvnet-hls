@@ -2,7 +2,7 @@
 import os
 import math
 import shutil
-import generate.modules.squeeze
+import fpgaconvnet.hls.generate.modules.squeeze as generate_squeeze
 
 squeeze_layer_template_header = """#ifndef {NAME}_HPP_
 #define {NAME}_HPP_
@@ -79,7 +79,7 @@ def lcm(a, b):
 def gen_squeeze_layer(name,param,src_path,header_path):
 
     # BATCH NORM MODULE INIT
-    squeeze = generate.modules.squeeze.gen_squeeze_module(
+    squeeze = generate_squeeze.gen_squeeze_module(
         name+"_squeeze",
         "in",
         "out",

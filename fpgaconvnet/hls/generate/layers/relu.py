@@ -1,7 +1,7 @@
 # import modules
 import os
 import shutil
-import generate.modules.relu
+import fpgaconvnet.hls.generate.modules.relu as generate_relu
 
 relu_layer_template_header = """#ifndef {NAME}_HPP_
 #define {NAME}_HPP_
@@ -90,7 +90,7 @@ void {name}(
 def gen_relu_layer(name,param,src_path,header_path):
 
     # RELU MODULE INIT
-    relu = generate.modules.relu.gen_relu_module(
+    relu = generate_relu.gen_relu_module(
         name+"_relu",
         "in",
         "out",

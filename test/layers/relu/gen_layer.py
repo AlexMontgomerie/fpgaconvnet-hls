@@ -3,12 +3,10 @@ import os
 import numpy as np
 
 sys.path.append("..")
-sys.path.append(os.environ.get("FPGACONVNET_OPTIMISER"))
-sys.path.append(os.environ.get("FPGACONVNET_HLS"))
-
-from fpgaconvnet_optimiser.models.layers.ReLULayer import ReLULayer
-import generate.layers.relu
 from Layer import Layer
+
+from fpgaconvnet.models.layers.ReLULayer import ReLULayer
+import fpgaconvnet.hls.generate.layers.relu as relu
 
 class ReLULayerTB(Layer):
     def __init__(self):
@@ -53,7 +51,7 @@ class ReLULayerTB(Layer):
 
     # update layer generation
     def gen_layer(self,src_path,header_path):
-        generate.layers.relu.gen_relu_layer(
+        relu.gen_relu_layer(
             self.name,
             self.param,
             os.path.join(src_path,'{}.cpp'.format(self.name)),
