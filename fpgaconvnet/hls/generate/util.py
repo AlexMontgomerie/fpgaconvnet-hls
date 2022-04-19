@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+from typing import List
 @dataclass
 class GenerateWeights:
     name: str
@@ -30,10 +30,10 @@ class GenerateWeights:
 class GenerateStreams:
     name: str
     type: str
-    dims: list[str]
+    dims: List[str]
 
     def __post_init__(self):
-        self.stream_dims = "][".join(dims)
+        self.stream_dims = "][".join(self.dims)
 
     def generate_stream(self):
         return f"""

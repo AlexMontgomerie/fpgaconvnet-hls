@@ -1,5 +1,5 @@
 # load getopt script
-source ../../../fpgaconvnet/hls/scripts/tcl_getopt.tcl
+source ../../../fpgaconvnet/hls/scripts/hls/tcl_getopt.tcl
 
 # get fpgaconvnet root folder
 set fpgaconvnet_hardware_path ../../../fpgaconvnet/hls/hardware

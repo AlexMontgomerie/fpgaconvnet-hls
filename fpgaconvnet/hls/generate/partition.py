@@ -5,6 +5,7 @@ import numpy as np
 import sys
 from functools import reduce
 from pathlib import Path
+import subprocess
 
 from fpgaconvnet.hls.generate.partition_template import *
 
@@ -13,11 +14,12 @@ from fpgaconvnet.hls.generate.layers.pooling        import gen_pooling_layer
 from fpgaconvnet.hls.generate.layers.relu           import gen_relu_layer
 from fpgaconvnet.hls.generate.layers.inner_product  import gen_inner_product_layer
 from fpgaconvnet.hls.generate.layers.squeeze        import gen_squeeze_layer
+from fpgaconvnet.hls.generate.util import *
 
-import fpgaconvnet_optimiser.tools.graphs as graphs
-import fpgaconvnet_optimiser.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
+import fpgaconvnet.tools.graphs as graphs
+import fpgaconvnet.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 from google.protobuf.json_format import MessageToDict
-from tools.onnx_data import get_layer_from_partition, gen_layer_name # REQUIRED EDIT
+from fpgaconvnet.hls.tools.onnx_data import get_layer_from_partition, gen_layer_name # REQUIRED EDIT
 
 class GeneratePartition:
 
@@ -27,6 +29,13 @@ class GeneratePartition:
         self.partition = partition
         self.output_path = output_path
         self.onnx_data = onnx_data
+
+        # make output path directory
+        self.mkdir(self.output_path)
+        self.mkdir(os.path.join(self.output_path, "src"))
+        self.mkdir(os.path.join(self.output_path, "tb"))
+        self.mkdir(os.path.join(self.output_path, "include"))
+        self.mkdir(os.path.join(self.output_path, "data"))
 
         # get fpgaconvnet-hls root directory
         self.fpgaconvnet_root = str(Path(__file__).resolve().parent.parent)
@@ -40,6 +49,12 @@ class GeneratePartition:
             "include" : False,
             "testbench" : False
         }
+
+    def mkdir(self, path):
+        try:
+            os.mkdir(path)
+        except FileExistsError:
+            print(f"WARNING: path {path} already exists!")
 
     def generate_layers(self):
 
@@ -77,6 +92,10 @@ class GeneratePartition:
             if layer.type == fpgaconvnet_pb2.layer.layer_type.SQUEEZE:
                 gen_squeeze_layer(*args)
             # create layer call
+            for stream_in in layer.streams_in:
+                fn_args.append(stream_in.name)
+            for stream_out in layer.streams_out:
+                fn_args.append(stream_out.name)
             fn_args.append("mode")
             fn_args = ", ".join(fn_args)
             self.layers += f"    {layer_name}({fn_args});\n"
@@ -95,13 +114,22 @@ class GeneratePartition:
             # get layer name
             layer_name = gen_layer_name(layer)
             # create hardware for each layer
-            if layer.type == fpgaconvnet_pb2.layer.layer_type.CONVOLUTION:
-                weights.append(GenerateWeights(layer_name, kernel_size_x=parameters["kernel_size"][0],
-                        kernel_size_y=parameters["kernel_size"][0],
-                        wr=(layer_name == self.partition.weights_reloading_layer)))
-            if layer.type == fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT:
+            if layer.type in [fpgaconvnet_pb2.layer.layer_type.CONVOLUTION, fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT]:
+                # add weight generators
                 weights.append(GenerateWeights(layer_name,
                         wr=(layer_name == self.partition.weights_reloading_layer)))
+                # create weights from onnx model
+                ## get weights reloading factor
+                wr_factor = self.partition.weights_reloading_factor \
+                        if layer_name == self.partition.weights_reloading_layer else 1
+                ## save both dat and csv forms of weights
+                self.onnx_data.save_weights_layer(layer, wr_factor=wr_factor,
+                       output_path=os.path.join(self.output_path, "data", f"{layer_name}_weights"),
+                       to_dat=True, to_csv=True)
+                ## also save biases to dat and csv
+                # self.onnx_data.save_biases_layer(layer,
+                #        output_path=os.path.join(self.output_path, "data", f"{layer_name}_biases"),
+                #        to_dat=True, to_csv=True)
 
         # get weights definitions and intialisation
         self.weights_def = "\n\n".join([w.generate_def() for w in weights])
@@ -115,12 +143,14 @@ class GeneratePartition:
         streams = {}
         for layer in self.partition.layers:
             for stream_in in layer.streams_in:
-                streams[stream_in.name] = GenerateStreams(stream_in.name, f"{layer.name}_input_t", [stream_in.coarse])
+                streams[stream_in.name] = GenerateStreams(stream_in.name, f"{layer.name}_input_t",
+                        [f"{layer.name.upper()}_COARSE_IN"])
             for stream_out in layer.streams_out:
-                streams[stream_out.name] = GenerateStreams(stream_out.name, f"{layer.name}_output_t", [stream_out.coarse])
+                streams[stream_out.name] = GenerateStreams(stream_out.name, f"{layer.name}_output_t",
+                        [f"{layer.name.upper()}_COARSE_OUT"])
 
         # create stream initialisations
-        self.streams_init = "\n".join([s.generate_stream() for s in streams.items()])
+        self.streams_init = "\n".join([s.generate_stream() for s in streams.values()])
 
         # set generated flag
         self.is_generated["streams"] = True
@@ -155,6 +185,10 @@ class GeneratePartition:
             include     =include
         )
 
+        # save to output path
+        with open(os.path.join(self.output_path, f'include/{self.name}_top.hpp'),'w') as f:
+            f.write(network_header)
+
         # set generated flag
         self.is_generated["include"] = True
 
@@ -170,32 +204,35 @@ class GeneratePartition:
             name        =self.name,
             NAME        =self.name.upper(),
             wr_layer    =self.partition.weights_reloading_layer,
-            weights     =self.weights,
+            weights     =self.weights_def,
             weights_init=self.weights_init,
             streams_init=self.streams_init,
             layers      =self.layers
         )
 
         # save to output path
-        with open(os.path.join(self.output_path,f'src/{self.name}_top.cpp'),'w') as f:
+        with open(os.path.join(self.output_path, f'src/{self.name}_top.cpp'),'w') as f:
             f.write(network_src)
 
         # set generated flag
         self.is_generated["source"] = True
 
-    def generate_testbench(self, input_data):
+    def generate_testbench(self):
+
+        # generate the data in and out of the partition
 
         # format testbench code template
         network_tb_src = network_tb_src_template.format(
             name = self.name,
             NAME = self.name.upper(),
-            input_data_path = os.path.join(self.output_path, f"data/{input_node}_0.dat"),
-            weights_reloading_path = os.path.join(self.output_path, f"data/{wr_layer}_weights_0.dat"),
-            output_data_path = os.path.join(self.output_path, f"data/{output_node}_0.dat")
+            input_data_path = os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_0.dat"),
+            weights_reloading_path = os.path.join(self.output_path,
+                f"data/{self.partition.weights_reloading_layer}_weights_0.dat"),
+            output_data_path = os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_0.dat")
         )
 
         # save to output path
-        with open(os.path.join(self.output_path,f'tb/{name}_tb.cpp'),'w') as f:
+        with open(os.path.join(self.output_path,f'tb/{self.name}_tb.cpp'),'w') as f:
             f.write(network_tb_src)
 
         # set generated flag
@@ -205,14 +242,21 @@ class GeneratePartition:
     Vivado HLS functions
     """
 
-    def create_vivado_hls_project(self):
+    def create_vivado_hls_project(self, fpga_part="xc7z045ffg900-2", clk=5):
 
         # check everything is generated
-        assert reduce(lambda a, b: a & b, self.is_generated.items()), "ERROR: not all stages are generated!"
+        assert reduce(lambda a, b: a & b, self.is_generated.values()), "ERROR: not all stages are generated!"
 
         # create hls project
-        subprocess.call(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/create_vivado_hls_project.tcl \
-                \"_ -name {self.name} -prj {self.output_path} \"")
+        os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/create_partition_project.tcl\
+                \"_ -name {self.name} -prj {self.output_path} -fpga {fpga_part} -clk {clk}\"")
+
+    def run_csynth(self):
+
+        # create hls project
+        os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_csynth.tcl\
+                \"_ -name {self.name}\"")
+
 
 if __name__=="__main__":
 

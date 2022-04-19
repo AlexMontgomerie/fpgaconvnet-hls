@@ -2,7 +2,7 @@
 variable fpgaconvnet_root [file dirname [file dirname [file dirname [file normalize [info script]]]]]
 
 # load getopt script
-source ${fpgaconvnet_root}/scripts/tcl_getopt.tcl
+source ${fpgaconvnet_root}/scripts/hls/tcl_getopt.tcl
 
 # get input arguments
 set hls_arg [ lindex $argv 2 ]
@@ -13,8 +13,11 @@ getopt $hls_arg -prj    project_path    ""
 getopt $hls_arg -fpga   fpga            "xc7z045ffg900-2"
 getopt $hls_arg -clk    clk_period      "5"
 
+puts "project: ${name}"
+puts "path: ${project_path}"
+
 # default cflags
-set default_cflags "-std=c++11 -I${project_path}/include"
+set default_cflags "-std=c++11 -I${project_path}/include -I${project_path}/data -Wparentheses-equality -Wtautological-compare "
 
 # create open project
 open_project -reset ${name}

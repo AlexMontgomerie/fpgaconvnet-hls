@@ -50,7 +50,7 @@ examples/**/partition_*/
 
 test/partitions/**/outputs/
 test/partitions/**/partition_*/
-yaml-cpp-release-0.5.3/*
+test/partitions/**/*.onnx
 
 sd_card/
 partition_*/
