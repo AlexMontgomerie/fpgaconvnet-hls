@@ -32,3 +32,6 @@ single_layer.create_vivado_hls_project()
 # run c-synthesis
 single_layer.run_csynth()
 
+# export design
+single_layer.export_design()
+

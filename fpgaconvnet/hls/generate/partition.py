@@ -1,11 +1,9 @@
-import json
 import os
-import shutil
 import numpy as np
 import sys
 from functools import reduce
 from pathlib import Path
-import subprocess
+from google.protobuf.json_format import MessageToDict
 
 from fpgaconvnet.hls.generate.partition_template import *
 
@@ -16,19 +14,22 @@ from fpgaconvnet.hls.generate.layers.inner_product  import gen_inner_product_lay
 from fpgaconvnet.hls.generate.layers.squeeze        import gen_squeeze_layer
 from fpgaconvnet.hls.generate.util import *
 
-import fpgaconvnet.tools.graphs as graphs
+import fpgaconvnet.hls.tools.onnx_data as onnx_data
+from fpgaconvnet.hls.tools.array_init import array_init
+
 import fpgaconvnet.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
-from google.protobuf.json_format import MessageToDict
-from fpgaconvnet.hls.tools.onnx_data import get_layer_from_partition, gen_layer_name # REQUIRED EDIT
+import fpgaconvnet.tools.onnx_helper as onnx_helper
+import fpgaconvnet.tools.layer_enum as layer_enum
 
 class GeneratePartition:
 
-    def __init__(self, name, partition, onnx_data, output_path):
+    def __init__(self, name, partition, model, sess, output_path):
 
         self.name = name
         self.partition = partition
         self.output_path = output_path
-        self.onnx_data = onnx_data
+        self.model = model
+        self.sess = sess
 
         # make output path directory
         self.mkdir(self.output_path)
@@ -66,17 +67,16 @@ class GeneratePartition:
             parameters = MessageToDict(layer.parameters, preserving_proto_field_name=True)
             # init function arguments for this layer
             fn_args = []
-            layer_name = gen_layer_name(layer)
             # init hardware generation args
             args = [
-                layer_name,
+                layer.name,
                 parameters,
-                os.path.join(self.output_path, "src", f"{layer_name}.cpp"),
-                os.path.join(self.output_path, "include", f"{layer_name}.hpp")
+                os.path.join(self.output_path, "src", f"{layer.name}.cpp"),
+                os.path.join(self.output_path, "include", f"{layer.name}.hpp")
             ]
             # create hardware for each layer
             if layer.type == fpgaconvnet_pb2.layer.layer_type.CONVOLUTION:
-                fn_args.append(f"{layer_name}_weights")
+                fn_args.append(f"{layer.name}_weights")
                 gen_convolution_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.POOLING:
                 gen_pooling_layer(*args)
@@ -87,7 +87,7 @@ class GeneratePartition:
             if layer.type == fpgaconvnet_pb2.layer.layer_type.SPLIT:
                 gen_split_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT:
-                fn_args.append(f"{layer_name}_weights")
+                fn_args.append(f"{layer.name}_weights")
                 gen_inner_product_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.SQUEEZE:
                 gen_squeeze_layer(*args)
@@ -98,7 +98,7 @@ class GeneratePartition:
                 fn_args.append(stream_out.name)
             fn_args.append("mode")
             fn_args = ", ".join(fn_args)
-            self.layers += f"    {layer_name}({fn_args});\n"
+            self.layers += f"    {layer.name}({fn_args});\n"
 
         # set generated flag
         self.is_generated["layers"] = True
@@ -111,25 +111,38 @@ class GeneratePartition:
         for layer in self.partition.layers:
             # get parameters of layer
             parameters = MessageToDict(layer.parameters, preserving_proto_field_name=True)
-            # get layer name
-            layer_name = gen_layer_name(layer)
             # create hardware for each layer
-            if layer.type in [fpgaconvnet_pb2.layer.layer_type.CONVOLUTION, fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT]:
+            if layer.type in [fpgaconvnet_pb2.layer.layer_type.CONVOLUTION,
+                    fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT]:
                 # add weight generators
-                weights.append(GenerateWeights(layer_name,
-                        wr=(layer_name == self.partition.weights_reloading_layer)))
+                weights.append(GenerateWeights(layer.name,
+                        wr=(layer.name == self.partition.weights_reloading_layer)))
                 # create weights from onnx model
                 ## get weights reloading factor
                 wr_factor = self.partition.weights_reloading_factor \
-                        if layer_name == self.partition.weights_reloading_layer else 1
-                ## save both dat and csv forms of weights
-                self.onnx_data.save_weights_layer(layer, wr_factor=wr_factor,
-                       output_path=os.path.join(self.output_path, "data", f"{layer_name}_weights"),
-                       to_dat=True, to_csv=True)
-                ## also save biases to dat and csv
-                # self.onnx_data.save_biases_layer(layer,
-                #        output_path=os.path.join(self.output_path, "data", f"{layer_name}_biases"),
-                #        to_dat=True, to_csv=True)
+                        if layer.name == self.partition.weights_reloading_layer else 1
+                ## get the raw weights
+                weights_raw = onnx_helper.get_model_initializer(self.model, layer.weights_path)
+                ## transforms weights
+                if layer_enum.from_proto_layer_type(layer.type) == layer_enum.LAYER_TYPE.Convolution:
+                    transformed_weights = onnx_data.get_weights_convolution(weights_raw, layer, wr_factor=wr_factor)
+                elif layer_enum.from_proto_layer_type(layer.type) == layer_enum.LAYER_TYPE.InnerProduct:
+                    transformed_weights = onnx_data.get_weights_inner_product(weights_raw, layer, wr_factor=wr_factor)
+                ## get the output path for the weights
+                output_path = os.path.join(self.output_path, "data", f"{layer.name}_weights")
+                ## save weights to csv
+                for weights_reloading_index in range(wr_factor):
+                    with open(f'{output_path}_{weights_reloading_index}.csv', 'w') as f:
+                        f.write(array_init(transformed_weights[weights_reloading_index]))
+                ## flatten weights into a stream
+                weights_stream =  onnx_data._convert_fixed_port_stream(
+                        transformed_weights.reshape(-1),
+                        total_width=layer.parameters.weight_width,
+                        int_width=layer.parameters.weight_width//2)
+                ## save to .dat format
+                onnx_data._fixed_point_stream_to_dat(weights_stream, output_path=output_path,
+                        streams=1, port_width=64, ports=1)
+                ## TODO: also save biases to dat and csv
 
         # get weights definitions and intialisation
         self.weights_def = "\n\n".join([w.generate_def() for w in weights])
@@ -159,8 +172,7 @@ class GeneratePartition:
         # include generation
         include = ""
         for layer in self.partition.layers:
-            layer_name = gen_layer_name(layer)
-            include +=f"#include \"{layer_name}.hpp\"\n"
+            include +=f"#include \"{layer.name}.hpp\"\n"
 
         # HEADER
         network_header = network_header_template.format(
@@ -219,8 +231,6 @@ class GeneratePartition:
 
     def generate_testbench(self):
 
-        # generate the data in and out of the partition
-
         # format testbench code template
         network_tb_src = network_tb_src_template.format(
             name = self.name,
@@ -238,6 +248,29 @@ class GeneratePartition:
         # set generated flag
         self.is_generated["testbench"] = True
 
+    def create_testbench_data(self, input_data):
+        # get the input name and shape
+        input_name  = self.sess.get_inputs()[0].name
+        input_shape = self.sess.get_inputs()[0].shape
+        # TODO: check data is right shape
+        # save input layer
+        # TODO add bitwidth
+        input_node = self.partition.input_node
+        input_stream = np.array( self.sess.run([input_node], { input_name : input_data } )[0] )
+        input_stream = np.moveaxis(input_stream, 1, -1)
+        input_stream = onnx_data._convert_fixed_port_stream(input_stream.reshape(-1))
+        onnx_data._fixed_point_stream_to_dat(input_stream,
+                os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_0.dat"),
+                streams=int(self.partition.layers[0].parameters.coarse_in))
+        # save output layer
+        output_node = self.partition.output_node
+        output_stream = np.array( self.sess.run([output_node], { input_name : input_data } )[0] )
+        output_stream = np.moveaxis(output_stream, 1, -1)
+        output_stream = onnx_data._convert_fixed_port_stream(output_stream.reshape(-1))
+        onnx_data._fixed_point_stream_to_dat(output_stream,
+                os.path.join(self.output_path, f"data/{self.partition.layers[-1].name}_0.dat"),
+                streams=int(self.partition.layers[-1].parameters.coarse_out))
+
     """
     Vivado HLS functions
     """
@@ -249,18 +282,25 @@ class GeneratePartition:
 
         # create hls project
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/create_partition_project.tcl\
-                \"_ -name {self.name} -prj {self.output_path} -fpga {fpga_part} -clk {clk}\"")
+                \"_ -name {self.output_path} -prj {self.output_path} -fpga {fpga_part} -clk {clk}\"")
 
     def run_csynth(self):
-
-        # create hls project
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_csynth.tcl\
-                \"_ -name {self.name}\"")
+                \"_ -name {self.output_path}\"")
 
+    def run_csim(self):
+        os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_csim.tcl\
+                \"_ -name {self.output_path}\"")
 
-if __name__=="__main__":
+    def run_cosim(self):
+        os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_cosim.tcl\
+                \"_ -name {self.output_path}\"")
 
-    gen_network(
-        'lenet_test',
-        'test/networks/lenet_test/lenet_test_partition_info.json',
-        'test/networks/lenet_test')
+    def run_implementation(self):
+        os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_implementation.tcl\
+                \"_ -name {self.output_path}\"")
+
+    def export_design(self):
+        os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/export_design.tcl\
+                \"_ -name {self.output_path}\"")
+
