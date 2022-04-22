@@ -10,10 +10,13 @@ template<
     unsigned int CHANNELS,
     unsigned int PORTS,
     unsigned int STREAMS,
-    typename type_t
+    typename type_t,
+    unsigned int DMA_WIDTH = 64,
+    unsigned int DATA_WIDTH = 16,
+    typename mem_t = mem_int
 >
 void mem_read(
-    volatile mem_int in_hw[PORTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)],
+    volatile mem_t in_hw[PORTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)],
     stream_t(type_t) in[STREAMS]
 )
 {
@@ -27,7 +30,11 @@ void mem_read(
     const unsigned ports                = PORTS;
     const unsigned streams              = STREAMS;
     const unsigned channels_per_stream  = DIVIDE(channels,streams);
-    const unsigned dma_channels         = DIVIDE(DMA_WIDTH,DATA_WIDTH);
+    const unsigned dma_channels         = DIVIDE(DMA_WIDTH, DATA_WIDTH);
+
+    const unsigned dma_width = DMA_WIDTH;
+    const unsigned data_width = DATA_WIDTH;
+    const unsigned bit_mask = (1 << data_width) - 1;
 
 #pragma HLS STREAM variable=in depth=256
 #pragma HLS ARRAY_PARTITION variable=in complete dim=0
@@ -35,7 +42,7 @@ void mem_read(
     read_loop: for (unsigned long size_index=0; size_index < batch_size*rows*cols*channels_per_stream; size_index++) {
         #pragma HLS PIPELINE II=1
 
-        mem_int port_cache[ports];
+        mem_t port_cache[ports];
         #pragma HLS ARRAY_PARTITION variable=port_cache complete dim=0
 
         port_read_loop: for (unsigned port_index=0; port_index < ports; port_index++) {
@@ -49,9 +56,8 @@ void mem_read(
 
             // get the stream value
             type_t stream_cache = 0;
-            stream_cache.range() = ( ( ( port_cache[port_index] ) >> ( ( stream_index%dma_channels ) * DATA_WIDTH ) ) & BIT_MASK );
-
-            /* printf("%d: %f\n", port_cache[port_index], stream_cache.to_float()); */
+            stream_cache.range() = ( ( ( port_cache[port_index] ) >>
+                        ( ( stream_index%dma_channels ) * data_width ) ) & bit_mask );
 
             // write to the stream
             in[stream_index].write(stream_cache);

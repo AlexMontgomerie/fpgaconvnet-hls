@@ -11,12 +11,15 @@ template<
     unsigned int PORTS,
     unsigned int STREAMS,
     unsigned int WEIGHTS_RELOADING_FACTOR,
-    typename type_t
+    typename type_t,
+    unsigned int DMA_WIDTH = 64,
+    unsigned int DATA_WIDTH = 16,
+    typename mem_t = mem_int
 >
 void mem_write(
     int weights_reloading_index,
     stream_t(type_t) out[STREAMS],
-    volatile mem_int out_hw[PORTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WEIGHTS_RELOADING_FACTOR]
+    volatile mem_t out_hw[PORTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WEIGHTS_RELOADING_FACTOR]
 )
 {
 
@@ -32,6 +35,10 @@ void mem_write(
     const unsigned channels_per_stream      = DIVIDE(channels,streams);
     const unsigned dma_channels             = DIVIDE(DMA_WIDTH,DATA_WIDTH);
 
+    const unsigned dma_width = DMA_WIDTH;
+    const unsigned data_width = DATA_WIDTH;
+    const unsigned bit_mask = (1 << data_width) - 1;
+
 #pragma HLS STREAM variable=out depth=256
 #pragma HLS ARRAY_PARTITION variable=out complete dim=0
 
@@ -43,10 +50,12 @@ void mem_write(
             streams_loop: for(unsigned stream_index=0; stream_index<streams; stream_index++) {
                 type_t stream_cache = out[stream_index].read();
                 unsigned int port_index = (int) (stream_index/dma_channels);
-                port_cache[port_index] |= ( ( stream_cache.range() & BIT_MASK ) << ( ( stream_index%dma_channels ) * DATA_WIDTH ) );
+                port_cache[port_index] |= ( ( stream_cache.range() & bit_mask ) <<
+                        ( ( stream_index%dma_channels ) * data_width ) );
             }
             port_write_loop: for (unsigned port_index=0; port_index < ports; port_index++) {
-                int out_index = pixel_index*channels_per_stream*weights_reloading_factor+weights_reloading_index*channels_per_stream+channel_index;
+                int out_index = pixel_index*channels_per_stream*weights_reloading_factor +
+                    weights_reloading_index*channels_per_stream + channel_index;
                 out_hw[port_index][out_index] = port_cache[port_index];
             }
         }

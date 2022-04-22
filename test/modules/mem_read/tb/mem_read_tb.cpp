@@ -25,12 +25,13 @@ int main()
     >(data_path,test_stream);
 
     // get number of dma channels
-    int dma_channels = DIVIDE(DMA_WIDTH,DATA_WIDTH);
+    int dma_channels = DIVIDE(MEM_READ_DMA_WIDTH,MEM_READ_DATA_WIDTH);
 
     // convert test stream to mem_int
     for(int i=0;i<size_in;i++) {
         for(int j=0;j<MEM_READ_STREAMS_IN;j++) {
-            test_in[(int)(j/dma_channels)][i] |= ( ( test_stream[i][j].range() & BIT_MASK ) << ( ( j % dma_channels ) * DATA_WIDTH ) );
+            test_in[(int)(j/dma_channels)][i] |= ( ( test_stream[i][j].range() & MEM_READ_BIT_MASK ) <<
+                    ( ( j % dma_channels ) * MEM_READ_DATA_WIDTH ) );
         }
     }
 

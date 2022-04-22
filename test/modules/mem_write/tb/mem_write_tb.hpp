@@ -5,7 +5,9 @@
 
 #include "mem_write_param.hpp"
 
-#define SIZE_OUT MEM_WRITE_BATCH_SIZE*MEM_WRITE_ROWS_OUT*MEM_WRITE_COLS_OUT*DIVIDE(MEM_WRITE_CHANNELS_OUT,MEM_WRITE_COARSE_OUT)
+#define MEM_WRITE_DMA_WIDTH  64
+#define MEM_WRITE_DATA_WIDTH 16
+#define MEM_WRITE_BIT_MASK   ((1<<(MEM_WRITE_DATA_WIDTH))-1)
 
 /////////////////////////////////
 

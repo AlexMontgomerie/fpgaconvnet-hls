@@ -26,8 +26,8 @@ int main()
     stream_t(fork_t) out_valid[FORK_COARSE];
 
     // test inputs data
-    fork_t test_in[FORK_ROWS*FORK_COLS*FORK_CHANNELS];
-    fork_t test_out[FORK_ROWS*FORK_COLS*FORK_CHANNELS][FORK_COARSE];
+    static fork_t test_in[FORK_ROWS*FORK_COLS*FORK_CHANNELS];
+    static fork_t test_out[FORK_ROWS*FORK_COLS*FORK_CHANNELS][FORK_COARSE];
 #endif
 
     // load data_in

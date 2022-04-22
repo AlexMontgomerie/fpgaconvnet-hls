@@ -3,9 +3,8 @@
     "rows_out"      : 10,
     "cols_out"      : 10,
     "channels_out"  : 80,
-    "streams_out"   : 2, 
+    "streams_out"   : 2,
     "ports_out"     : 1,
-    "weights_reloading_factor"  : 2, 
-    "weights_reloading_index"   : 1, 
-    "description"   : "" 
+    "weights_reloading_factor"  : 2,
+    "description"   : ""
 }

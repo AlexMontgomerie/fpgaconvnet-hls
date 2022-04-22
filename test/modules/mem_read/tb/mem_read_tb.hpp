@@ -4,6 +4,10 @@
 #include "common.hpp"
 #include "mem_read_param.hpp"
 
+#define MEM_READ_DMA_WIDTH  64
+#define MEM_READ_DATA_WIDTH 16
+#define MEM_READ_BIT_MASK   ((1<<(MEM_READ_DATA_WIDTH))-1)
+
 /////////////////////////////////
 
 void mem_read_top(

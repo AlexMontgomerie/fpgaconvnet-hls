@@ -444,7 +444,7 @@ int checkStreamEqual(
 		T tmp = test.read();
 		T tmp_valid = valid.read();
 
-		if(print_out) printf("%x,%x\n",tmp.range()&BIT_MASK,tmp_valid.range()&BIT_MASK);
+		if(print_out) printf("%x,%x\n",tmp.range(),tmp_valid.range());
 
 		if(
 				(tmp.to_float() > tmp_valid.to_float()+ERROR_TOLERANCE) ||
@@ -470,18 +470,28 @@ int checkStreamEqual(
 	return err;
 }
 
-template<int SIZE>
+template<
+    unsigned int SIZE,
+    unsigned int STREAMS,
+    unsigned int DMA_WIDTH = 64,
+    unsigned int DATA_WIDTH = 16
+>
 int check_array_equal(
     volatile mem_int test[SIZE],
     volatile mem_int valid[SIZE]
 )
 {
+
+    const unsigned dma_width = DMA_WIDTH;
+    const unsigned data_width = DATA_WIDTH;
+    const unsigned bit_mask = (1 << data_width) - 1;
+
     int err = 0;
     for(int i=0;i<SIZE;i++) {
-        for(int j=0;j<1;j++) {
+        for(int j=0;j<STREAMS;j++) {
             data_t tmp, tmp_valid;
-            tmp.range()         = (test[i] >> j*DATA_WIDTH) & BIT_MASK;
-            tmp_valid.range()   = (valid[i]>> j*DATA_WIDTH) & BIT_MASK;
+            tmp.range()         = (test[i] >> j*data_width) & bit_mask;
+            tmp_valid.range()   = (valid[i]>> j*data_width) & bit_mask;
             if(
                 (tmp.to_float() > tmp_valid.to_float()+ERROR_TOLERANCE) ||
                 (tmp.to_float() < tmp_valid.to_float()-ERROR_TOLERANCE)
@@ -492,53 +502,6 @@ int check_array_equal(
         }
     }
     return err;
-}
-template<typename T>
-int checkStreamEqual_file(
-		stream_t(T) &test,
-		stream_t(T) &valid,
-		bool print_out,
-		std::ofstream& fid
-)
-{
-	char byte[4];
-	while(!valid.empty())
-	{
-		if(test.empty())
-		{
-			printf("ERROR: empty early\n");
-			return 1;
-		}
-		T tmp = test.read();
-		T tmp_valid = valid.read();
-
-		if (fid)
-		{
-			byte[0] = tmp.range(7,0);
-			byte[1] = tmp.range(15,8);
-			byte[2] = 0;
-			byte[3] = 0;
-			fid.write(byte,4);
-		}
-
-		if(print_out) printf("%f != %f\n",tmp.to_float(),tmp_valid.to_float());
-
-		if(
-				(tmp.to_float() > tmp_valid.to_float()+ERROR_TOLERANCE) ||
-				(tmp.to_float() < tmp_valid.to_float()-ERROR_TOLERANCE)
-		)
-		{
-			printf("ERROR: wrong value\n");
-			return 1;
-		}
-	}
-
-	if(!test.empty())
-	{
-		printf("ERROR: still data in stream\n");
-		return 1;
-	}
-	return 0;
 }
 
 ////////////////////////////////////////////////////
@@ -583,17 +546,20 @@ void load_net_weights(
 }
 
 template<
-    int INPUTS,
-    int BATCH_SIZE,
-    int ROWS,
-    int COLS,
-    int CHANNELS,
-    int STREAMS,
-    int WR_FACTOR=1
+    unsigned int INPUTS,
+    unsigned int BATCH_SIZE,
+    unsigned int ROWS,
+    unsigned int COLS,
+    unsigned int CHANNELS,
+    unsigned int STREAMS,
+    unsigned int WR_FACTOR=1,
+    unsigned int DMA_WIDTH = 64,
+    unsigned int DATA_WIDTH = 16,
+    typename mem_t = mem_int
 >
 void load_net_data(
     std::string filepath,
-    volatile mem_int data[INPUTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WR_FACTOR],
+    volatile mem_t data[INPUTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WR_FACTOR],
     int wr_index = 0
 )
 {
@@ -626,6 +592,55 @@ void load_net_data(
             }
         }
     }
+    // close file
+    fclose(fp);
+}
+
+template<
+    unsigned int BATCH_SIZE,
+    unsigned int ROWS,
+    unsigned int COLS,
+    unsigned int CHANNELS,
+    unsigned int STREAMS,
+    unsigned int WR_FACTOR,
+    typename T
+>
+void load_wr_data(
+    std::string filepath,
+    T data[BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)][STREAMS],
+    int wr_index = 0
+)
+{
+
+    // read in file
+    const char *filepath_cstr = filepath.c_str();
+    FILE * fp = fopen(filepath_cstr,"r");
+
+    // check file opened
+    if (fp == NULL) {
+        perror("Failed to load data at");
+    }
+
+    // get variables
+    int channels_per_stream = DIVIDE(CHANNELS,STREAMS);
+
+    // save to array
+    for(int i=0;i<BATCH_SIZE*ROWS*COLS;i++) {
+        for(int j=0;j<WR_FACTOR;j++) {
+            for(int k=0;k<channels_per_stream;k++) {
+                for(int l=0;l<STREAMS;l++) {
+                    // read in the value from the file
+                    float val;
+                    fscanf(fp,"%f\n", &val);
+                    // specific weights reloading index
+                    if (j == wr_index) {
+                        data[i*channels_per_stream+k][l] = T( val );
+                    }
+                }
+            }
+        }
+    }
+
     // close file
     fclose(fp);
 }
