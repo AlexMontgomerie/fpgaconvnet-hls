@@ -1,0 +1,9 @@
+{
+    "batch_size": 1,
+    "rows": 2,
+    "cols": 2,
+    "channels":1,
+    "groups":1,
+    "filters":2,
+    "description": "bias module basic"
+}
