@@ -1,6 +1,7 @@
 import onnx
 import onnxruntime
 from google.protobuf import json_format
+import numpy as np
 
 import fpgaconvnet.proto.fpgaconvnet_pb2
 import fpgaconvnet.tools.onnx_helper as onnx_helper
@@ -8,7 +9,7 @@ import fpgaconvnet.tools.onnx_helper as onnx_helper
 from fpgaconvnet.hls.generate.partition import GeneratePartition
 
 class GenerateNetwork:
-     """
+    """
     Base class for all layer models.
 
     Attributes
@@ -36,6 +37,19 @@ class GenerateNetwork:
         self.model = onnx_helper.load(model_path)
         self.model = onnx_helper.update_batch_size(self.model, 1) # TODO
         # self.model = onnx_helper.update_batch_size(self.model,self.partition.batch_size)
+
+        # remove biases
+        for partition in self.partitions.partition:
+            for layer in partition.layers:
+                if layer.bias_path:
+                    initializer = onnx_helper.get_model_initializer(self.model, layer.bias_path, to_tensor=False)
+                    # TODO: seems like theres no bias initializer for inner product layer
+                    if not initializer:
+                        continue
+                    zeroes = np.zeros(onnx.numpy_helper.to_array(initializer).shape).astype(np.float32)
+                    initializer_new = onnx.numpy_helper.from_array(zeroes,name=initializer.name)
+                    self.model.graph.initializer.remove(initializer)
+                    self.model.graph.initializer.extend([initializer_new])
 
         # add intermediate layers to outputs
         for node in self.model.graph.node:
@@ -65,16 +79,13 @@ class GenerateNetwork:
             self.name, partition, self.model, self.sess, f"partition_{i}") for \
                     i, partition in enumerate(self.partitions.partition) ]
 
-    def generate_partition(self, partition_index):
-        """
-        Generates the hardware for the given parititon in the network.
-        Creates the HLS project, runs HLS synthesis and then packages the
-        generated IP.
+        # flags
+        self.is_generated = {
+            "project" : False,
+            "hardware" : False
+        }
 
-        Parameters
-        ----------
-        partition_index: int
-        """
+    def create_partition_project(self, partition_index):
         # generate each part of the partition
         self.partitions_generator[partition_index].generate_layers()
         self.partitions_generator[partition_index].generate_weights()
@@ -86,11 +97,53 @@ class GenerateNetwork:
         # create HLS project
         self.partitions_generator[partition_index].create_vivado_hls_project()
 
+        # set project generated flag
+        self.is_generated["project"] = True
+
+    def generate_partition_hardware(self, partition_index):
+        """
+        Generates the hardware for the given parititon in the network.
+        Creates the HLS project, runs HLS synthesis and then packages the
+        generated IP.
+
+        Parameters
+        ----------
+        partition_index: int
+        """
+
+        if not self.is_generated["project"]:
+            print("WARNING: partition project not created! creating now ...")
+            self.create_partition_project(partition_index)
+
         # run c-synthesis
         self.partitions_generator[partition_index].run_csynth()
 
         # export IP package
         self.partitions_generator[partition_index].export_design()
+
+        # set hardware generation flag
+        self.is_generated["hardware"] = True
+
+    def run_testbench(self, partition_index, image):
+        """
+        Generates the hardware for the given parititon in the network.
+        Creates the HLS project, runs HLS synthesis and then packages the
+        generated IP.
+
+        Parameters
+        ----------
+        partition_index: int
+        """
+
+        if not self.is_generated["project"]:
+            print("WARNING: partition project not created! creating now ...")
+            self.create_partition_project(partition_index)
+
+        # create the testbench data
+        self.partitions_generator[partition_index].create_testbench_data(image)
+
+        # run the c-simulation
+        self.partitions_generator[partition_index].run_csim()
 
     def generate_all_partitions(self, num_jobs=1):
         """

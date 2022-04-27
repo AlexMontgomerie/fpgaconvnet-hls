@@ -17,7 +17,7 @@ puts "project: ${name}"
 puts "path: ${project_path}"
 
 # default cflags
-set default_cflags "-std=c++11 -I${project_path}/include -I${project_path}/data -Wparentheses-equality -Wtautological-compare "
+set default_cflags "-std=c++11 -I${project_path}/include -I${project_path}/data"
 
 # create open project
 open_project -reset ${name}
@@ -30,6 +30,7 @@ add_files [ glob ${project_path}/src/*.cpp ] -cflags "${default_cflags} -I${fpga
 
 # add testbench file to the project
 add_files -tb [ glob ${project_path}/tb/*.cpp ] -cflags "${default_cflags}"
+add_files -tb [ glob ${project_path}/data/*.dat ] -cflags "${default_cflags}"
 
 # create the solution
 open_solution -reset "solution"

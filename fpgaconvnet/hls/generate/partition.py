@@ -1,8 +1,10 @@
 import os
-import numpy as np
 import sys
 from functools import reduce
 from pathlib import Path
+
+import onnx
+import numpy as np
 from google.protobuf.json_format import MessageToDict
 
 from fpgaconvnet.hls.generate.partition_template import *
@@ -43,13 +45,14 @@ class GeneratePartition:
 
         # state of generated partition
         self.is_generated = {
-            "layers" : False,
-            "weights" : False,
-            "streams" : False,
-            "source" : False,
-            "include" : False,
-            "testbench" : False
+            "layers"    : False,
+            "weights"   : False,
+            "streams"   : False,
+            "source"    : False,
+            "include"   : False,
+            "testbench" : False,
         }
+        self.project_generated = False
 
     def mkdir(self, path):
         """
@@ -248,10 +251,10 @@ class GeneratePartition:
         network_tb_src = network_tb_src_template.format(
             name = self.name,
             NAME = self.name.upper(),
-            input_data_path = os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_0.dat"),
-            weights_reloading_path = os.path.join(self.output_path,
-                f"data/{self.partition.weights_reloading_layer}_weights_0.dat"),
-            output_data_path = os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_0.dat")
+            input_data_path = f"{self.partition.layers[0].name}_0.dat",
+            weights_reloading_path = f"{self.partition.weights_reloading_layer}_weights_0.dat",
+            output_data_path = f"{self.partition.layers[-1].name}_0.dat"
+
         )
 
         # save to output path
@@ -273,7 +276,7 @@ class GeneratePartition:
         input_stream = np.moveaxis(input_stream, 1, -1)
         input_stream = onnx_data._convert_fixed_port_stream(input_stream.reshape(-1))
         onnx_data._fixed_point_stream_to_dat(input_stream,
-                os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_0.dat"),
+                os.path.join(self.output_path, f"data/{self.partition.layers[0].name}"),
                 streams=int(self.partition.layers[0].parameters.coarse_in))
         # save output layer
         output_node = self.partition.output_node
@@ -281,7 +284,7 @@ class GeneratePartition:
         output_stream = np.moveaxis(output_stream, 1, -1)
         output_stream = onnx_data._convert_fixed_port_stream(output_stream.reshape(-1))
         onnx_data._fixed_point_stream_to_dat(output_stream,
-                os.path.join(self.output_path, f"data/{self.partition.layers[-1].name}_0.dat"),
+                os.path.join(self.output_path, f"data/{self.partition.layers[-1].name}"),
                 streams=int(self.partition.layers[-1].parameters.coarse_out))
 
     """
@@ -297,23 +300,31 @@ class GeneratePartition:
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/create_partition_project.tcl\
                 \"_ -name {self.output_path} -prj {self.output_path} -fpga {fpga_part} -clk {clk}\"")
 
+        # set project generated flag
+        self.project_generated = True
+
     def run_csynth(self):
+        assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_csynth.tcl\
                 \"_ -name {self.output_path}\"")
 
     def run_csim(self):
+        assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_csim.tcl\
                 \"_ -name {self.output_path}\"")
 
     def run_cosim(self):
+        assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_cosim.tcl\
                 \"_ -name {self.output_path}\"")
 
     def run_implementation(self):
+        assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_implementation.tcl\
                 \"_ -name {self.output_path}\"")
 
     def export_design(self):
+        assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/export_design.tcl\
                 \"_ -name {self.output_path}\"")
 

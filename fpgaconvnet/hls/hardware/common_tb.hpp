@@ -559,7 +559,7 @@ template<
 >
 void load_net_data(
     std::string filepath,
-    volatile mem_t data[INPUTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WR_FACTOR],
+    mem_t data[INPUTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WR_FACTOR],
     int wr_index = 0
 )
 {

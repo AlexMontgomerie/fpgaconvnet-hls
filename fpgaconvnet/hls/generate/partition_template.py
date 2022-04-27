@@ -274,7 +274,7 @@ int main()
         // check array is correct
         for(int i=0; i<{NAME}_PORTS_OUT;i++) {{
             printf("PORT %d\\n",i);
-            err += check_array_equal<{NAME}_SIZE_OUT>(test_out[i],test_out_valid[i]);
+            err += check_array_equal<{NAME}_SIZE_OUT, {NAME}_STREAMS_OUT>(test_out[i],test_out_valid[i]);
         }}
 
     }}
