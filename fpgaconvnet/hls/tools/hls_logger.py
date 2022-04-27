@@ -7,6 +7,9 @@ import sys
 import yaml
 
 class hls_log():
+    """
+    class to parse and format outputs from HLS projects.
+    """
 
     def __init__(self, design_name, solution_path, lang="verilog"):
 
@@ -23,7 +26,14 @@ class hls_log():
         self.impl_xml = os.path.join(self.solution_path,"impl/report",self.lang,
                 f"{self.design_name}_export.xml")
 
-    def check_pass_csim(self):
+    def check_pass_csim(self) -> bool:
+        """
+        checks whether c-simulation has passed.
+
+        Returns:
+        --------
+        bool
+        """
         assert os.path.exists(self.csim_log)
         error_line = re.compile("INFO: \[SIM 1\] CSim done with ([0-9]+) errors.")
         with open(self.csim_log,"r") as f:
@@ -31,16 +41,46 @@ class hls_log():
             assert len(errors) > 0
             assert int(errors[0]) == 0
 
-    def check_pass_synth(self):
+    def check_pass_synth(self) -> bool:
+        """
+        checks whether HLS synthesis has passed.
+
+        Returns:
+        --------
+        bool
+        """
         assert os.path.exists(self.synth_xml)
 
-    def check_pass_sim(self):
+    def check_pass_sim(self) -> bool:
+        """
+        checks whether co-simulation has passed.
+
+        Returns:
+        --------
+        bool
+        """
         assert os.path.exists(self.cosim_rpt)
 
-    def check_pass_impl(self):
+    def check_pass_impl(self) -> bool:
+        """
+        checks whether the design has been implemented.
+
+        Returns:
+        --------
+        bool
+        """
         assert os.path.exists(self.impl_xml)
 
-    def check_pass(self):
+    def check_pass(self) -> dict:
+        """
+        check whether all parts of the HLS project have
+        passed.
+
+        Returns:
+        --------
+        dict
+        """
+
         test_pass = {
             'csim'  : True,
             'synth' : True,
@@ -70,7 +110,15 @@ class hls_log():
         # return all tests
         return test_pass
 
-    def get_impl_resources(self):
+    def get_impl_resources(self) -> dict:
+        """
+        get the implementation resources used. This includes
+        SLICE, LUT, FF, DSP, BRAM and SRL resources.
+
+        Returns:
+        --------
+        dict
+        """
         assert os.path.exists(self.impl_xml)
         obj = untangle.parse(self.impl_xml)
         return {
@@ -82,7 +130,15 @@ class hls_log():
             'SRL'   : int(obj.profile.AreaReport.Resources.SRL.cdata)
         }
 
-    def get_synth_resources(self):
+    def get_synth_resources(self) -> dict:
+        """
+        get the predicted resources used for synthesis. This
+        includes LUT, FF, DSP and BRAM resources.
+
+        Returns:
+        --------
+        dict
+        """
         assert os.path.exists(self.synth_xml)
         obj = untangle.parse(self.synth_xml)
         return {
@@ -92,7 +148,14 @@ class hls_log():
             'BRAM'  : int(obj.profile.AreaEstimates.Resources.BRAM_18K.cdata)
         }
 
-    def get_synth_latency(self):
+    def get_synth_latency(self) -> int:
+        """
+        get the predicted latency from HLS synthesis
+
+        Returns:
+        --------
+        int
+        """
         assert os.path.exists(self.synth_xml)
         latency = untangle.parse(self.synth_xml).profile.PerformanceEstimates.SummaryOfOverallLatency.Average_caseLatency.cdata
         if latency == "undef":
@@ -100,7 +163,14 @@ class hls_log():
         else:
             return int(latency)
 
-    def get_sim_latency(self):
+    def get_sim_latency(self) -> int:
+        """
+        get the measured latency from co-simulation.
+
+        Returns:
+        --------
+        int
+        """
         assert os.path.exists(self.cosim_rpt)
         latency_line = re.compile("\|   Verilog\|      Pass\|(?: +)(?:[0-9]+)\|(?: +)([0-9]+)\|")
         with open(self.cosim_rpt,"r") as f:
@@ -109,6 +179,13 @@ class hls_log():
                 return int(latencys[0])
    # TODO: find which one is latency
 
-    def get_clk_period(self):
+    def get_clk_period(self) -> float:
+        """
+        get the predicted clock period from HLS synthesis
+
+        Returns:
+        --------
+        float
+        """
         assert os.path.exists(self.impl_xml)
         return float(untangle.parse(self.impl_xml).profile.TimingReport.AchievedClockPeriod.cdata)
