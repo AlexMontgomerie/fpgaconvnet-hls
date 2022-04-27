@@ -1,3 +1,7 @@
+"""
+Header, Source and TestBench templates for partition generation.
+"""
+
 network_header_template = """#ifndef {NAME}_TOP_HPP_
 #define {NAME}_TOP_HPP_
 

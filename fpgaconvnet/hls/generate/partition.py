@@ -52,12 +52,25 @@ class GeneratePartition:
         }
 
     def mkdir(self, path):
+        """
+        Helper function to create a directory, which does not throw an error
+        if the path already exists.
+
+        Parameters
+        ----------
+        path: str
+            path to directory to create
+        """
         try:
             os.mkdir(path)
         except FileExistsError:
             print(f"WARNING: path {path} already exists!")
 
     def generate_layers(self):
+        """
+        Generates layer header and source files through the layer generator functions,
+        and creates a string of layer calls for
+        """
 
         self.layers = ""
 

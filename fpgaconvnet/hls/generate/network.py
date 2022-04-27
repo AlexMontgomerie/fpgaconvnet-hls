@@ -8,6 +8,19 @@ import fpgaconvnet.tools.onnx_helper as onnx_helper
 from fpgaconvnet.hls.generate.partition import GeneratePartition
 
 class GenerateNetwork:
+     """
+    Base class for all layer models.
+
+    Attributes
+    ----------
+    buffer_depth: int, default: 0
+        depth of incoming fifo buffers for each stream in.
+    model:
+        an onnx model loaded from the given `model_path`
+    partitions_generator: List[GeneratePartition]
+        list of partition generators for each partition loaded
+        from the `partition_path`
+    """
 
     def __init__(self, name, partition_path, model_path):
 
@@ -21,7 +34,7 @@ class GenerateNetwork:
 
         # load onnx model
         self.model = onnx_helper.load(model_path)
-        self.model = onnx_helper.update_batch_size(self.model, 1)
+        self.model = onnx_helper.update_batch_size(self.model, 1) # TODO
         # self.model = onnx_helper.update_batch_size(self.model,self.partition.batch_size)
 
         # add intermediate layers to outputs
@@ -52,10 +65,16 @@ class GenerateNetwork:
             self.name, partition, self.model, self.sess, f"partition_{i}") for \
                     i, partition in enumerate(self.partitions.partition) ]
 
-    def apply_weight_quantisation(self):
-        pass
-
     def generate_partition(self, partition_index):
+        """
+        Generates the hardware for the given parititon in the network.
+        Creates the HLS project, runs HLS synthesis and then packages the
+        generated IP.
+
+        Parameters
+        ----------
+        partition_index: int
+        """
         # generate each part of the partition
         self.partitions_generator[partition_index].generate_layers()
         self.partitions_generator[partition_index].generate_weights()
@@ -74,6 +93,17 @@ class GenerateNetwork:
         self.partitions_generator[partition_index].export_design()
 
     def generate_all_partitions(self, num_jobs=1):
+        """
+        Runs `generate_partition` for all partitions in the network.
+
+        Parameters
+        ----------
+        num_jobs: int = 0
+            number of parallel jobs to execute for partition generation
+            .. note::
+                no parallel execution implemented yet
+        """
+
         # TODO: add multi-threading for partitions
         for i in range(len(self.partitions_generator)):
             self.generate_partition(i)
