@@ -12,16 +12,23 @@ void convolution_layer_top(
         #include "weights.csv"
     };
 
-/* #pragma HLS interface bram port=weights */
+    const static convolution_layer_biases_t biases[CONVOLUTION_LAYER_COARSE_OUT][DIVIDE(CONVOLUTION_LAYER_FILTERS,CONVOLUTION_LAYER_COARSE_OUT)] = {
+        #include "biases.csv"
+    };
+
 
 #pragma HLS STREAM variable=in
 #pragma HLS STREAM variable=out
 
 #pragma HLS ARRAY_PARTITION variable=weights complete dim=1
 #pragma HLS ARRAY_PARTITION variable=weights complete dim=2
-#pragma HLS RESOURCE variable=weights core=RAM_2P_BRAM
+#pragma HLS RESOURCE variable=weights core=RAM
 #pragma HLS STABLE variable=weights
 
-    convolution_layer(weights,in,out,mode);
+#pragma HLS ARRAY_PARTITION variable=biases complete dim=1
+#pragma HLS RESOURCE variable=biases core=RAM
+#pragma HLS STABLE variable=biases
+
+    convolution_layer(weights,biases,in,out,mode);
 
 }

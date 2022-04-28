@@ -17,6 +17,8 @@
     "input_width": 16,
     "acc_width": 30,
     "weight_width": 16,
+    "biases_width": 16,
     "output_width": 16,
+    "has_bias": 1,
     "description": "no spatial dim, no channels, no filters. No parallelism. Kernel Size =1"
 }

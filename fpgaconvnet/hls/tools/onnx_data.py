@@ -162,12 +162,12 @@ def _fixed_point_stream_to_dat(stream, output_path, streams=1, port_width=64, po
         with open(f"{output_path}_{i}.dat", 'w') as f:
             f.write("\n".join([str(j) for j in bin_out[i]]))
 
-    def transform_featuremap(self, featuremap):
-        # normalise
-        #featuremap = self.normalise(featuremap) # TODO: remove
-        # transform featuremap
-        return np.moveaxis(featuremap, 1, -1)
-        # TODO: handle 1D and 2D featuremaps
+    # def transform_featuremap(self, featuremap):
+    #     # normalise
+    #     #featuremap = self.normalise(featuremap) # TODO: remove
+    #     # transform featuremap
+    #     return np.moveaxis(featuremap, 1, -1)
+    #     # TODO: handle 1D and 2D featuremaps
 
     # def save_featuremap(self, featuremap, output_path, parallel_streams=1, to_yaml=False, to_bin=False, to_csv=False, to_dat=False):
     #     # get feature map stream
@@ -259,6 +259,25 @@ def get_weights_inner_product(weights_raw, layer, wr_factor=1):
     weights_raw = np.reshape(weights_raw,(filters*wr_factor,rows*cols*channels,1,1))
     # return transformed weights
     return _transform_weights(weights_raw,wr_factor,coarse_in,coarse_out,1,1)
+
+def _transform_biases(biases_raw, filters, coarse_out, wr_factor=1):
+    # parameters
+    num_filters  = biases_raw.shape[0]//(coarse_out*wr_factor)
+    biases = np.ndarray(
+        shape=(
+            wr_factor,
+            coarse_out,
+            num_filters
+            ), dtype=float, order='C')#order is row major
+
+    # transform biases raw shape
+    for index,_ in np.ndenumerate(biases):
+        biases[index] = biases_raw[coarse_out*wr_factor*index[2]+index[1]+index[0]]
+
+    # return transformed biases
+    return biases
+
+
 
     # def save_weights_layer(self,layer,wr_factor=1,output_path=None,to_yaml=False,to_bin=False,to_csv=False,to_dat=False):
     #     # get transformed weights

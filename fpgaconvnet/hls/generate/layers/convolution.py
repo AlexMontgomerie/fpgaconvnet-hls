@@ -3,6 +3,7 @@ import fpgaconvnet.hls.generate.modules.fork as generate_fork
 import fpgaconvnet.hls.generate.modules.conv as generate_conv
 import fpgaconvnet.hls.generate.modules.accum as generate_accum
 import fpgaconvnet.hls.generate.modules.glue as generate_glue
+import fpgaconvnet.hls.generate.modules.bias as generate_bias
 
 convolution_layer_template_header = """#ifndef {NAME}_HPP_
 #define {NAME}_HPP_
@@ -12,6 +13,7 @@ convolution_layer_template_header = """#ifndef {NAME}_HPP_
 #include "conv.hpp"
 #include "accum.hpp"
 #include "glue.hpp"
+#include "bias.hpp"
 
 #define name        {name}
 #define NAME        {NAME}
@@ -33,6 +35,8 @@ convolution_layer_template_header = """#ifndef {NAME}_HPP_
 #define {NAME}_STRIDE_X      {stride_x}
 #define {NAME}_STRIDE_Y      {stride_y}
 
+#define {NAME}_HAS_BIAS {has_bias}
+
 // coefficients
 #define {NAME}_WEIGHTS {NAME}_FILTERS*DIVIDE({NAME}_CHANNELS,{NAME}_GROUPS)*{NAME}_KERNEL_SIZE_X*{NAME}_KERNEL_SIZE_Y
 
@@ -46,6 +50,7 @@ typedef ap_fixed<{input_width},{input_int_width},AP_RND>    {name}_input_t;
 typedef ap_fixed<{output_width},{output_int_width},AP_RND>  {name}_output_t;
 typedef ap_fixed<{acc_width},{acc_int_width},AP_RND>        {name}_acc_t;
 typedef ap_fixed<{weight_width},{weight_int_width},AP_RND>  {name}_weight_t;
+typedef ap_fixed<{biases_width},{biases_int_width},AP_RND>  {name}_biases_t;
 
 // SLIDING WINDOW
 #define {NAME}_SLIDING_WINDOW_BATCH_SIZE    {batch_size}
@@ -104,12 +109,22 @@ typedef ap_fixed<{weight_width},{weight_int_width},AP_RND>  {name}_weight_t;
 #define {NAME}_GLUE_COARSE_OUT   {coarse_out}
 #define {NAME}_GLUE_COARSE_GROUP {coarse_group}
 
+// BIAS
+#define {NAME}_BIAS_BATCH_SIZE   {batch_size}
+#define {NAME}_BIAS_ROWS         {rows_out}
+#define {NAME}_BIAS_COLS         {cols_out}
+//#define {NAME}_BIAS_FILTERS      DIVIDE({NAME}_FILTERS, {NAME}_COARSE_OUT*{NAME}_WR_FACTOR)
+#define {NAME}_BIAS_FILTERS      {filters_per_module}
+
 /**
  * FUNCTION DEFINITION
  */
 
 void {name}(
     const {name}_weight_t weights[{NAME}_COARSE_IN*{NAME}_COARSE_GROUP][{NAME}_COARSE_OUT][DIVIDE({NAME}_WEIGHTS,{NAME}_COARSE_IN*{NAME}_COARSE_GROUP*{NAME}_COARSE_OUT*{NAME}_KERNEL_SIZE_X*{NAME}_KERNEL_SIZE_Y)][{NAME}_KERNEL_SIZE_X][{NAME}_KERNEL_SIZE_Y],
+#if {NAME}_HAS_BIAS == 1
+    const {name}_biases_t biases[{NAME}_COARSE_OUT][{NAME}_BIAS_FILTERS],
+#endif
     stream_t({name}_input_t)  in[{NAME}_COARSE_IN*{NAME}_COARSE_GROUP],
     stream_t({name}_output_t) out[{NAME}_COARSE_OUT*{NAME}_COARSE_GROUP],
     int mode
@@ -177,8 +192,21 @@ void {name}_glue(
 {glue}
 }}
 
+void {name}_bias(
+    const {name}_biases_t biases[{NAME}_BIAS_FILTERS],
+    stream_t({name}_output_t) &in,
+    stream_t({name}_output_t) &out
+) {{
+
+#pragma HLS INLINE OFF
+{bias}
+}}
+
 void {name}(
     const {name}_weight_t weights[{NAME}_COARSE_IN*{NAME}_COARSE_GROUP][{NAME}_COARSE_OUT][DIVIDE({NAME}_WEIGHTS,{NAME}_COARSE_IN*{NAME}_COARSE_GROUP*{NAME}_COARSE_OUT*{NAME}_KERNEL_SIZE_X*{NAME}_KERNEL_SIZE_Y)][{NAME}_KERNEL_SIZE_X][{NAME}_KERNEL_SIZE_Y],
+#if {NAME}_HAS_BIAS == 1
+    const {name}_biases_t biases[{NAME}_COARSE_OUT][{NAME}_BIAS_FILTERS],
+#endif
     stream_t({name}_input_t)  in[{NAME}_COARSE_IN*{NAME}_COARSE_GROUP],
     stream_t({name}_output_t) out[{NAME}_COARSE_OUT*{NAME}_COARSE_GROUP],
     int mode
@@ -220,6 +248,12 @@ void {name}(
     #pragma HLS ARRAY_PARTITION variable=accum_out complete dim=0
 #endif
 
+#if {NAME}_HAS_BIAS == 1
+    stream_t({name}_output_t) glue_out[{NAME}_COARSE_OUT];
+    #pragma HLS STREAM variable=accum_out
+    #pragma HLS ARRAY_PARTITION variable=accum_out complete dim=0
+#endif
+
     {name}_coarse_in_loop: for(unsigned int i=0;i<{NAME}_COARSE_IN*{NAME}_COARSE_GROUP;i++) {{
         #pragma HLS unroll
 #if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1
@@ -238,9 +272,35 @@ void {name}(
     }}
 
 #if {NAME}_ACCUM_CHANNELS > 1
-    {name}_glue(accum_out, out);
+#if {NAME}_HAS_BIAS == 1
+
+    {name}_glue(accum_out, glue_out);
+
+    {name}_coarse_out_bias_loop: for(unsigned int i=0;i<{NAME}_COARSE_OUT;i++) {{
+        #pragma HLS unroll
+        {name}_bias(biases[i], glue_out[i], out[i]);
+    }}
+
 #else
+
+    {name}_glue(accum_out, out);
+
+#endif
+#else
+#if {NAME}_HAS_BIAS == 1
+
+    {name}_glue(conv_out, glue_out);
+
+    {name}_coarse_out_bias_loop: for(unsigned int i=0;i<{NAME}_COARSE_OUT;i++) {{
+        #pragma HLS unroll
+        {name}_bias(biases[i], glue_out[i], out[i]);
+    }}
+
+#else
+
     {name}_glue(conv_out, out);
+
+#endif
 #endif
 
 }}
@@ -292,6 +352,15 @@ def gen_convolution_layer(name, param, src_path, header_path):
         indent=4
     )
 
+    # BIAS MODULE INIT
+    bias = generate_bias.gen_bias_module(
+        name+"_bias",
+        "in", "biases", "out",
+        data_t=f"{name}_output_t",
+        biases_t=f"{name}_biases_t",
+        indent=4
+    )
+
     # src
     convolution_layer_src = convolution_layer_template_src.format(
         name            =name,
@@ -301,7 +370,8 @@ def gen_convolution_layer(name, param, src_path, header_path):
         fork            =fork,
         conv            =conv,
         accum           =accum,
-        glue            =glue
+        glue            =glue,
+        bias            =bias
     )
 
     # header
@@ -344,6 +414,9 @@ def gen_convolution_layer(name, param, src_path, header_path):
         acc_int_width       =param['acc_width']//2,
         weight_width        =param['weight_width'],
         weight_int_width    =param['weight_width']//2,
+        biases_width        =param['biases_width'],
+        biases_int_width    =param['biases_width']//2,
+        has_bias            =param['has_bias']
     )
 
     # write source file
