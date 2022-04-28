@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List
+
 @dataclass
 class GenerateWeights:
     name: str
@@ -44,5 +45,25 @@ class GenerateStreams:
 
     def __repr__(self):
         return self.__generate_stream()
+
+@dataclass
+class GenerateBiases:
+    name: str
+
+    def generate_def(self):
+        return f"""
+const static {self.name}_biases_t {self.name}_biases[{self.name.upper()}_COARSE_OUT][DIVIDE({self.name.upper()}_FILTERS,{self.name.upper()}_COARSE_OUT)] = {{
+#include "{self.name}_biases.csv"
+}};
+        """
+
+    def generate_init(self):
+        return f"""
+#pragma HLS ARRAY_PARTITION variable={self.name}_biases complete dim=1
+#pragma HLS RESOURCE variable={self.name}_biases core=ROM
+#pragma HLS STABLE variable={self.name}_biases
+        """
+    def __repr__(self):
+        return self.__generate_def() + "\n" + self.generate_init()
 
 

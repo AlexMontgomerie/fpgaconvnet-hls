@@ -277,6 +277,12 @@ def _transform_biases(biases_raw, filters, coarse_out, wr_factor=1):
     # return transformed biases
     return biases
 
+def get_biases(biases_raw, layer, wr_factor=1):
+    # transform parameters
+    coarse_out  = layer.parameters.coarse_out
+    filters = layer.parameters.filters
+    # return transformed biases
+    return _transform_biases(biases_raw, filters, coarse_out, wr_factor)
 
 
     # def save_weights_layer(self,layer,wr_factor=1,output_path=None,to_yaml=False,to_bin=False,to_csv=False,to_dat=False):

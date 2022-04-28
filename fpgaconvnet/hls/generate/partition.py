@@ -93,6 +93,8 @@ class GeneratePartition:
             # create hardware for each layer
             if layer.type == fpgaconvnet_pb2.layer.layer_type.CONVOLUTION:
                 fn_args.append(f"{layer.name}_weights")
+                if layer.parameters.has_bias == 1:
+                    fn_args.append(f"{layer.name}_biases")
                 gen_convolution_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.POOLING:
                 gen_pooling_layer(*args)
@@ -104,6 +106,8 @@ class GeneratePartition:
                 gen_split_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.INNER_PRODUCT:
                 fn_args.append(f"{layer.name}_weights")
+                if layer.parameters.has_bias == 1:
+                    fn_args.append(f"{layer.name}_biases")
                 gen_inner_product_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.SQUEEZE:
                 gen_squeeze_layer(*args)
@@ -119,9 +123,10 @@ class GeneratePartition:
         # set generated flag
         self.is_generated["layers"] = True
 
-    def generate_weights(self):
+    def generate_parameters(self):
 
         weights = []
+        biases = []
 
         # generate weights
         for layer in self.partition.layers:
@@ -158,11 +163,35 @@ class GeneratePartition:
                 ## save to .dat format
                 onnx_data._fixed_point_stream_to_dat(weights_stream, output_path=output_path,
                         streams=1, port_width=64, ports=1)
-                ## TODO: also save biases to dat and csv
+                # add weight generators (if bias present)
+                if layer.parameters.has_bias == 1:
+                    ## add a biases generator
+                    biases.append(GenerateBiases(layer.name))
+                    # create bias parameters from onnx model
+                    ## get the raw biases from onnx
+                    biases_raw = onnx_helper.get_model_initializer(self.model, layer.bias_path)
+                    ## transform bias parameters
+                    transformed_biases = onnx_data.get_biases(biases_raw, layer, wr_factor=wr_factor)
+                    ## get the output path for biases
+                    output_path = os.path.join(self.output_path, "data", f"{layer.name}_biases")
+                    ## save biases to csv
+                    with open(f'{output_path}.csv', 'w') as f:
+                        f.write(array_init(transformed_biases[0]))
+                    ## flatten biases into a stream
+                    biases_stream = onnx_data._convert_fixed_port_stream(
+                            transformed_biases.reshape(-1),
+                            total_width=layer.parameters.biases_width,
+                            int_width=layer.parameters.biases_width//2)
+                    ## save to .dat format
+                    onnx_data._fixed_point_stream_to_dat(biases_stream, output_path=output_path,
+                            streams=1, port_width=64, ports=1)
 
         # get weights definitions and intialisation
         self.weights_def = "\n\n".join([w.generate_def() for w in weights])
         self.weights_init = "\n\n".join([w.generate_init() for w in weights])
+
+        self.biases_def = "\n\n".join([b.generate_def() for b in biases])
+        self.biases_init = "\n\n".join([b.generate_init() for b in biases])
 
         # set generated flag
         self.is_generated["weights"] = True
@@ -233,7 +262,9 @@ class GeneratePartition:
             NAME        =self.name.upper(),
             wr_layer    =self.partition.weights_reloading_layer,
             weights     =self.weights_def,
+            biases      =self.biases_def,
             weights_init=self.weights_init,
+            biases_init =self.biases_init,
             streams_init=self.streams_init,
             layers      =self.layers
         )

@@ -1,6 +1,5 @@
 {
     "type": "RELU",
-    "buffer_depth": 1,
     "rows_in": 28,
     "cols_in": 28,
     "channels_in": 64,

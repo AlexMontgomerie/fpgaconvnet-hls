@@ -87,6 +87,8 @@ network_src_template = """#include "{name}_top.hpp"
 
 {weights}
 
+{biases}
+
 #if {NAME}_WEIGHTS_RELOADING_FLAG
 void reload_weights(
     int weights_reloading_index,
@@ -138,6 +140,7 @@ void process(
 #pragma HLS DATAFLOW
 
 {weights_init}
+{biases_init}
 {streams_init}
 
     mem_read<

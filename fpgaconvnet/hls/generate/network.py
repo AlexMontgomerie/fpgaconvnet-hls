@@ -88,7 +88,7 @@ class GenerateNetwork:
     def create_partition_project(self, partition_index):
         # generate each part of the partition
         self.partitions_generator[partition_index].generate_layers()
-        self.partitions_generator[partition_index].generate_weights()
+        self.partitions_generator[partition_index].generate_parameters()
         self.partitions_generator[partition_index].generate_streams()
         self.partitions_generator[partition_index].generate_include()
         self.partitions_generator[partition_index].generate_source()

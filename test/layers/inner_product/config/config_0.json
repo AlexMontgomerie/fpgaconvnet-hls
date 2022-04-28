@@ -4,7 +4,7 @@
     "rows_in": 1,
     "cols_in": 1,
     "channels_in": 10,
-    "filters": 10,
+    "filters": 100,
     "coarse_in": 1,
     "coarse_out": 1,
     "fine": 1,

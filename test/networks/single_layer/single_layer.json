@@ -42,6 +42,7 @@
             "pad_right": 0,
             "pad_left": 0,
             "pad_bottom": 0,
+            "has_bias": 1,
             "kernel_size": [
               5,
               5
@@ -52,6 +53,7 @@
             ],
             "data_width": 16,
             "weight_width": 16,
+            "biases_width": 16,
             "acc_width": 32,
             "input_width": 16,
             "output_width": 16
