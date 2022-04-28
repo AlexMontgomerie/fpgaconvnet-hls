@@ -18,8 +18,22 @@ void inner_product_layer_top(
 
 #pragma HLS ARRAY_PARTITION variable=weights complete dim=1
 #pragma HLS ARRAY_PARTITION variable=weights complete dim=2
-#pragma HLS RESOURCE variable=weights core=RAM_2P_BRAM
+#pragma HLS RESOURCE variable=weights core=RAM
 
-    inner_product_layer(weights,in,out,mode);
+#if INNER_PRODUCT_LAYER_HAS_BIAS == 1
+    const static inner_product_layer_biases_t biases[INNER_PRODUCT_LAYER_COARSE_OUT][DIVIDE(INNER_PRODUCT_LAYER_FILTERS, INNER_PRODUCT_LAYER_COARSE_OUT)] = {
+#include "biases.csv"
+    };
+
+#pragma HLS ARRAY_PARTITION variable=biases complete dim=1
+#pragma HLS RESOURCE variable=biases core=RAM
+#endif
+
+    inner_product_layer(
+            weights,
+#if INNER_PRODUCT_LAYER_HAS_BIAS == 1
+            biases,
+#endif
+            in,out,mode);
 
 }

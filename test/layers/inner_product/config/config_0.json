@@ -13,6 +13,8 @@
     "input_width": 16,
     "acc_width": 30,
     "weight_width": 8,
+    "biases_width": 8,
     "output_width": 16,
+    "has_bias": 1,
     "description": "layer name: ip1, net name: lenet.prototxt"
 }

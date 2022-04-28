@@ -444,7 +444,9 @@ int checkStreamEqual(
 		T tmp = test.read();
 		T tmp_valid = valid.read();
 
-		if(print_out) printf("%x,%x\n",tmp.range(),tmp_valid.range());
+		// if(print_out) printf("%x,%x\n",tmp.range(),tmp_valid.range());
+		if(print_out) printf("%x,%x,%f,%f\n",tmp.range(),tmp_valid.range(),
+                tmp.to_float(), tmp_valid.to_float());
 
 		if(
 				(tmp.to_float() > tmp_valid.to_float()+ERROR_TOLERANCE) ||

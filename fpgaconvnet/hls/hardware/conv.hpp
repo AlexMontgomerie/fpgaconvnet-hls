@@ -1471,51 +1471,6 @@ void conv(
 
 /* } */
 
-template<
-    unsigned int CHANNELS,
-    unsigned int FILTERS,
-    unsigned int GROUPS,
-    typename conv_data_t,
-    typename conv_weight_t,
-    typename conv_acc_t
->
-void conv_1d_inner(
-    stream_t(conv_data_t) &in,
-    const conv_weight_t weights[DIVIDE(CHANNELS*FILTERS,GROUPS)][1][1],
-    stream_t(conv_acc_t) &out,
-    conv_data_t window_cache,
-    unsigned int filter_index,
-    unsigned int weight_index
-)
-{
-
-#pragma HLS INLINE OFF
-
-    const unsigned channels     = CHANNELS;
-    const unsigned filters      = FILTERS;
-    const unsigned groups       = GROUPS;
-
-    const unsigned int channels_per_group = DIVIDE(channels,groups);
-    const unsigned int filters_per_group  = DIVIDE(filters ,groups);
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-    // result for the dot product
-    conv_acc_t dot;
-
-    if(filter_index%filters_per_group == 0) {
-        // update the cache
-        window_cache = in.read();
-    }
-
-    // perform the dot product
-    dot = window_cache * weights[weight_index][0][0];
-
-    // write to the dotproduct to the output
-    out.write(dot);
-}
-
 /**
  *  point-wise convolution
  */
@@ -1557,6 +1512,8 @@ void conv(
 
     // cache for the incoming sample
     conv_data_t window_cache;
+    // result for the dot product
+    conv_acc_t dot;
 
     pixel_loop: for(unsigned int pixel_index=0;pixel_index<batch_size*rows*cols;pixel_index++) {
         unsigned int weight_index = 0;
@@ -1564,8 +1521,15 @@ void conv(
             for(unsigned int filter_index=0;filter_index<filters;filter_index++) {
                 #pragma HLS loop_flatten
                 #pragma HLS PIPELINE II=1
-                conv_1d_inner<CHANNELS, FILTERS, GROUPS, conv_data_t, conv_weight_t,
-                    conv_acc_t>(in, weights, out, window_cache, filter_index, weight_index);
+                // update the cache
+                if(filter_index%filters_per_group == 0) {
+                    window_cache = in.read();
+                }
+                // perform the dot product
+                dot = window_cache * weights[weight_index][0][0];
+                // write to the dotproduct to the output
+                out.write(dot);
+                // increment weights index
                 weight_index++;
             }
         }
@@ -1610,14 +1574,21 @@ void conv(
 
     // cache for the incoming sample
     conv_data_t window_cache;
+    // result for the dot product
+    conv_acc_t dot;
 
     pixel_loop: for(unsigned int pixel_index=0;pixel_index<batch_size*rows*cols;pixel_index++) {
         unsigned int weight_index = 0;
         for(unsigned int channel_index=0;channel_index<channels_per_group;channel_index++) {
             #pragma HLS loop_flatten
             #pragma HLS PIPELINE II=1
-            conv_1d_inner<CHANNELS, 1, GROUPS, conv_data_t, conv_weight_t,
-                conv_acc_t>(in, weights, out, window_cache, 0, weight_index);
+            // update the cache
+            window_cache = in.read();
+            // perform the dot product
+            dot = window_cache * weights[weight_index][0][0];
+            // write to the dotproduct to the output
+            out.write(dot);
+            // increment weights index
             weight_index++;
         }
     }
@@ -1663,14 +1634,23 @@ void conv(
 
     // cache for the incoming sample
     conv_data_t window_cache;
+    // result for the dot product
+    conv_acc_t dot;
 
     pixel_loop: for(unsigned int pixel_index=0;pixel_index<batch_size*rows*cols;pixel_index++) {
         unsigned int weight_index = 0;
         for(unsigned int filter_index=0;filter_index<filters;filter_index++) {
             #pragma HLS loop_flatten
             #pragma HLS PIPELINE II=1
-            conv_1d_inner<CHANNELS, FILTERS, GROUPS, conv_data_t, conv_weight_t,
-                conv_acc_t>(in, weights, out, window_cache, filter_index, weight_index);
+            // update the cache
+            if(filter_index%filters_per_group == 0) {
+                window_cache = in.read();
+            }
+            // perform the dot product
+            dot = window_cache * weights[weight_index][0][0];
+            // write to the dotproduct to the output
+            out.write(dot);
+            // increment weights index
             weight_index++;
         }
     }
@@ -1712,14 +1692,23 @@ void conv(
 
     // cache for the incoming sample
     conv_data_t window_cache;
+    // result for the dot product
+    conv_acc_t dot;
 
     unsigned int weight_index = 0;
     for(unsigned int channel_index=0;channel_index<channels_per_group;channel_index++) {
         for(unsigned int filter_index=0;filter_index<filters;filter_index++) {
             #pragma HLS loop_flatten
             #pragma HLS PIPELINE II=1
-            conv_1d_inner<CHANNELS, FILTERS, GROUPS, conv_data_t, conv_weight_t,
-                conv_acc_t>(in, weights, out, window_cache, filter_index, weight_index);
+            // update the cache
+            if(filter_index%filters_per_group == 0) {
+                window_cache = in.read();
+            }
+            // perform the dot product
+            dot = window_cache * weights[weight_index][0][0];
+            // write to the dotproduct to the output
+            out.write(dot);
+            // increment weights index
             weight_index++;
         }
     }
@@ -1758,12 +1747,19 @@ void conv(
 
     // cache for the incoming sample
     conv_data_t window_cache;
+    // result for the dot product
+    conv_acc_t dot;
 
     unsigned int weight_index = 0;
     for(unsigned int channel_index=0;channel_index<channels_per_group;channel_index++) {
         #pragma HLS PIPELINE II=1
-        conv_1d_inner<CHANNELS, 1, GROUPS, conv_data_t, conv_weight_t,
-            conv_acc_t>(in, weights, out, window_cache, 0, weight_index);
+        // update the cache
+        window_cache = in.read();
+        // perform the dot product
+        dot = window_cache * weights[weight_index][0][0];
+        // write to the dotproduct to the output
+        out.write(dot);
+        // increment weights index
         weight_index++;
     }
 }
@@ -1795,17 +1791,28 @@ void conv(
     const unsigned channels = CHANNELS;
     const unsigned filters  = FILTERS;
 
+    const unsigned filters_per_group = DIVIDE(FILTERS,GROUPS);
+
 #pragma HLS STREAM variable=in
 #pragma HLS STREAM variable=out
 
     // cache for the incoming sample
     conv_data_t window_cache;
+    // result for the dot product
+    conv_acc_t dot;
 
     unsigned int weight_index = 0;
     for(unsigned int filter_index=0;filter_index<filters;filter_index++) {
         #pragma HLS PIPELINE II=1
-        conv_1d_inner<CHANNELS, FILTERS, GROUPS, conv_data_t, conv_weight_t,
-            conv_acc_t>(in, weights, out, window_cache, filter_index, weight_index);
+         // update the cache
+        if(filter_index%filters_per_group == 0) {
+            window_cache = in.read();
+        }
+        // perform the dot product
+        dot = window_cache * weights[weight_index][0][0];
+        // write to the dotproduct to the output
+        out.write(dot);
+        // increment weights index
         weight_index++;
     }
 }
