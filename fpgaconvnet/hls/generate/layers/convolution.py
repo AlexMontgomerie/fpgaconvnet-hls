@@ -250,8 +250,8 @@ void {name}(
 
 #if {NAME}_HAS_BIAS == 1
     stream_t({name}_output_t) glue_out[{NAME}_COARSE_OUT];
-    #pragma HLS STREAM variable=accum_out
-    #pragma HLS ARRAY_PARTITION variable=accum_out complete dim=0
+    #pragma HLS STREAM variable=glue_out
+    #pragma HLS ARRAY_PARTITION variable=glue_out complete dim=0
 #endif
 
     {name}_coarse_in_loop: for(unsigned int i=0;i<{NAME}_COARSE_IN*{NAME}_COARSE_GROUP;i++) {{

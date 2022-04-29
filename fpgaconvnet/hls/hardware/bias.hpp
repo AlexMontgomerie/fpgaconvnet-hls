@@ -70,4 +70,29 @@ void bias(
     }
 }
 
+template<
+    unsigned int FILTERS,
+    typename bias_data_t,
+    typename bias_biases_t
+>
+void bias(
+    stream_t(bias_data_t) &in,
+    const bias_biases_t bias[FILTERS],
+    stream_t(bias_data_t) &out
+)
+{
+
+#pragma HLS INLINE OFF
+
+    const unsigned int filters      = FILTERS;
+
+#pragma HLS STREAM variable=in
+#pragma HLS STREAM variable=out
+
+    filter_loop: for(unsigned int filter_index=0;filter_index<filters;filter_index++) {
+        #pragma HLS PIPELINE II=1 rewind
+        out.write(in.read() + bias[filter_index]);
+    }
+}
+
 #endif

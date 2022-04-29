@@ -1,0 +1,12 @@
+{
+    "type": "SQUEEZE",
+    "rows_in": 23,
+    "cols_in": 24,
+    "channels_in": 20,
+    "coarse_in": 5,
+    "coarse_out": 20,
+    "batch_size": 1,
+    "buffer_depth": 1,
+    "data_width": 16,
+    "description": "example squeeze from LeNet (deadlock detected)"
+}

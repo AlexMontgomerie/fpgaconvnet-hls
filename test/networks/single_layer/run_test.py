@@ -27,11 +27,14 @@ input_image = input_image/np.linalg.norm(input_image)
 # duplicate across batch size
 input_image = np.stack([input_image for _ in range(1)], axis=0 )
 
-print(input_image.shape)
 # create project for first partition
-# net.create_partition_project(0)
+net.create_partition_project(0)
 
-# run the partition's testbench
-net.run_testbench(0, input_image)
+# # run the partition's testbench
+# net.run_testbench(0, input_image)
 
-# net.generate_partition_hardware(0)
+# generate hardware
+net.generate_partition_hardware(0)
+
+# run co-simulation
+net.run_cosimulation(0, input_image)
