@@ -23,10 +23,14 @@ class GenerateNetwork:
         from the `partition_path`
     """
 
-    def __init__(self, name, partition_path, model_path):
+    def __init__(self, name, partition_path, model_path, fpga_part="xc7z045ffg900-2", clk=5):
 
         # save name
         self.name = name
+
+        # save platform information
+        self.fpga_part = fpga_part
+        self.clk = clk
 
         # load partition information
         self.partitions = fpgaconvnet.proto.fpgaconvnet_pb2.partitions()
@@ -95,7 +99,8 @@ class GenerateNetwork:
         self.partitions_generator[partition_index].generate_testbench()
 
         # create HLS project
-        self.partitions_generator[partition_index].create_vivado_hls_project()
+        self.partitions_generator[partition_index].create_vivado_hls_project(
+                fpga_part=self.fpga_part, clk=self.clk)
 
         # set project generated flag
         self.is_generated["project"] = True
