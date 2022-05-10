@@ -329,7 +329,7 @@ class GeneratePartition:
 
         # create hls project
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/create_partition_project.tcl\
-                \"_ -name {self.output_path} -prj {self.output_path} -fpga {fpga_part} -clk {clk}\"")
+                \"_ -prj {self.output_path} -fpga {fpga_part} -clk {clk}\"")
 
         # set project generated flag
         self.project_generated = True
@@ -337,25 +337,25 @@ class GeneratePartition:
     def run_csynth(self):
         assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_csynth.tcl\
-                \"_ -name {self.output_path}\"")
+                \"_ -prj {self.output_path}\"")
 
     def run_csim(self):
         assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_csim.tcl\
-                \"_ -name {self.output_path}\"")
+                \"_ -prj {self.output_path}\"")
 
     def run_cosim(self):
         assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_cosim.tcl\
-                \"_ -name {self.output_path}\"")
+                \"_ -prj {self.output_path}\"")
 
     def run_implementation(self):
         assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/run_implementation.tcl\
-                \"_ -name {self.output_path}\"")
+                \"_ -prj {self.output_path}\"")
 
     def export_design(self):
         assert self.project_generated, "ERROR: project not yet created!"
         os.system(f"vivado_hls -f {self.fpgaconvnet_root}/scripts/hls/export_design.tcl\
-                \"_ -name {self.output_path}\"")
+                \"_ -prj {self.output_path}\"")
 

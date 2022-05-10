@@ -7,11 +7,11 @@ source ${fpgaconvnet_root}/scripts/hls/tcl_getopt.tcl
 # get input arguments
 set hls_arg [ lindex $argv 2 ]
 
-# get arguments (arg)   (variable)      (defaults)
-getopt $hls_arg -name   name            ""
+# get arguments
+getopt $hls_arg -prj project_path
 
 # open project
-open_project ${name}
+open_project ${project_path}
 
 # open solution
 open_solution "solution"

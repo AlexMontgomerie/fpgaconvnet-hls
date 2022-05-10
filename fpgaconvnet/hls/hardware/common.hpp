@@ -20,7 +20,8 @@
 // macro for integer division
 #define DIVIDE(a,b) ((const unsigned int) ((a)/(b)))
 
-// macro for evaluating minimum of two numbers
+// macro for evaluating min and max
+#define MAX(a,b) (((a)>(b))?(a):(b))
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 // macro for stream wrapper

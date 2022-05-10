@@ -1,0 +1,426 @@
+{
+  "partition": [
+    {
+      "id": 0,
+      "ports": 1,
+      "batch_size": 1,
+      "input_node": "ip1_input",
+      "output_node": "ip4",
+      "weights_reloading_factor": 1,
+      "weights_reloading_layer": "ip4",
+      "layers": [
+        {
+          "name": "tfc_ip1_MatMul_squeeze",
+          "streams_in": [
+            {
+              "name": "in",
+              "coarse": 4
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip1_MatMul_squeeze_tfc_ip1_MatMul",
+              "coarse": 8
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 784,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 784,
+            "coarse_in": 4,
+            "coarse_out": 8,
+            "data_width": 16
+          },
+          "node_in": "tfc_ip1_MatMul_squeeze",
+          "node_out": "tfc_ip1_MatMul",
+          "type": "SQUEEZE"
+        },
+        {
+          "name": "tfc_ip1_MatMul",
+          "streams_in": [
+            {
+              "name": "tfc_ip1_MatMul_squeeze_tfc_ip1_MatMul",
+              "coarse": 8
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip1_MatMul_tfc_ip1_MatMul_squeeze_tfc_ip1_Relu",
+              "coarse": 64
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 784,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 8,
+            "coarse_out": 64,
+            "filters": 64,
+            "data_width": 16,
+            "weight_width": 16,
+            "acc_width": 16,
+            "input_width": 16,
+            "output_width": 16,
+            "has_bias": 1,
+            "biases_width": 16
+          },
+          "node_in": "tfc_ip1_MatMul_squeeze",
+          "node_out": "tfc_ip1_MatMul_squeeze_tfc_ip1_Relu",
+          "type": "INNER_PRODUCT",
+          "weights_path": "tfc/ip1/MatMul/ReadVariableOp:0",
+          "bias_path": "tfc/ip1/MatMul/ReadVariableOp:0_bias"
+        },
+        {
+          "name": "tfc_ip1_MatMul_squeeze_tfc_ip1_Relu",
+          "streams_in": [
+            {
+              "name": "tfc_ip1_MatMul_tfc_ip1_MatMul_squeeze_tfc_ip1_Relu",
+              "coarse": 64
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip1_MatMul_squeeze_tfc_ip1_Relu_tfc_ip1_Relu",
+              "coarse": 1
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 64,
+            "coarse_out": 1,
+            "data_width": 16
+          },
+          "node_in": "tfc_ip1_MatMul",
+          "node_out": "tfc_ip1_Relu",
+          "type": "SQUEEZE"
+        },
+        {
+          "name": "tfc_ip1_Relu",
+          "streams_in": [
+            {
+              "name": "tfc_ip1_MatMul_squeeze_tfc_ip1_Relu_tfc_ip1_Relu",
+              "coarse": 1
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip1_Relu_tfc_ip2_MatMul",
+              "coarse": 1
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 1,
+            "coarse_out": 1,
+            "coarse": 1,
+            "data_width": 16
+          },
+          "node_in": "tfc_ip1_MatMul_squeeze_tfc_ip1_Relu",
+          "node_out": "tfc_ip2_MatMul",
+          "type": "RELU"
+        },
+        {
+          "name": "tfc_ip2_MatMul",
+          "streams_in": [
+            {
+              "name": "tfc_ip1_Relu_tfc_ip2_MatMul",
+              "coarse": 1
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip2_MatMul_tfc_ip2_MatMul_squeeze_tfc_ip2_Relu",
+              "coarse": 64
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 1,
+            "coarse_out": 64,
+            "filters": 64,
+            "data_width": 16,
+            "weight_width": 16,
+            "acc_width": 16,
+            "input_width": 16,
+            "output_width": 16,
+            "has_bias": 1,
+            "biases_width": 16
+          },
+          "node_in": "tfc_ip1_Relu",
+          "node_out": "tfc_ip2_MatMul_squeeze_tfc_ip2_Relu",
+          "type": "INNER_PRODUCT",
+          "weights_path": "tfc/ip2/MatMul/ReadVariableOp:0",
+          "bias_path": "tfc/ip2/MatMul/ReadVariableOp:0_bias"
+        },
+        {
+          "name": "tfc_ip2_MatMul_squeeze_tfc_ip2_Relu",
+          "streams_in": [
+            {
+              "name": "tfc_ip2_MatMul_tfc_ip2_MatMul_squeeze_tfc_ip2_Relu",
+              "coarse": 64
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip2_MatMul_squeeze_tfc_ip2_Relu_tfc_ip2_Relu",
+              "coarse": 1
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 64,
+            "coarse_out": 1,
+            "data_width": 16
+          },
+          "node_in": "tfc_ip2_MatMul",
+          "node_out": "tfc_ip2_Relu",
+          "type": "SQUEEZE"
+        },
+        {
+          "name": "tfc_ip2_Relu",
+          "streams_in": [
+            {
+              "name": "tfc_ip2_MatMul_squeeze_tfc_ip2_Relu_tfc_ip2_Relu",
+              "coarse": 1
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip2_Relu_tfc_ip3_MatMul",
+              "coarse": 1
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 1,
+            "coarse_out": 1,
+            "coarse": 1,
+            "data_width": 16
+          },
+          "node_in": "tfc_ip2_MatMul_squeeze_tfc_ip2_Relu",
+          "node_out": "tfc_ip3_MatMul",
+          "type": "RELU"
+        },
+        {
+          "name": "tfc_ip3_MatMul",
+          "streams_in": [
+            {
+              "name": "tfc_ip2_Relu_tfc_ip3_MatMul",
+              "coarse": 1
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip3_MatMul_tfc_ip3_MatMul_squeeze_tfc_ip3_Relu",
+              "coarse": 64
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 1,
+            "coarse_out": 64,
+            "filters": 64,
+            "data_width": 16,
+            "weight_width": 16,
+            "acc_width": 16,
+            "input_width": 16,
+            "output_width": 16,
+            "has_bias": 1,
+            "biases_width": 16
+          },
+          "node_in": "tfc_ip2_Relu",
+          "node_out": "tfc_ip3_MatMul_squeeze_tfc_ip3_Relu",
+          "type": "INNER_PRODUCT",
+          "weights_path": "tfc/ip3/MatMul/ReadVariableOp:0",
+          "bias_path": "tfc/ip3/MatMul/ReadVariableOp:0_bias"
+        },
+        {
+          "name": "tfc_ip3_MatMul_squeeze_tfc_ip3_Relu",
+          "streams_in": [
+            {
+              "name": "tfc_ip3_MatMul_tfc_ip3_MatMul_squeeze_tfc_ip3_Relu",
+              "coarse": 64
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip3_MatMul_squeeze_tfc_ip3_Relu_tfc_ip3_Relu",
+              "coarse": 1
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 64,
+            "coarse_out": 1,
+            "data_width": 16
+          },
+          "node_in": "tfc_ip3_MatMul",
+          "node_out": "tfc_ip3_Relu",
+          "type": "SQUEEZE"
+        },
+        {
+          "name": "tfc_ip3_Relu",
+          "streams_in": [
+            {
+              "name": "tfc_ip3_MatMul_squeeze_tfc_ip3_Relu_tfc_ip3_Relu",
+              "coarse": 1
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "tfc_ip3_Relu_ip4",
+              "coarse": 1
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 64,
+            "coarse_in": 1,
+            "coarse_out": 1,
+            "coarse": 1,
+            "data_width": 16
+          },
+          "node_in": "tfc_ip3_MatMul_squeeze_tfc_ip3_Relu",
+          "node_out": "ip4",
+          "type": "RELU"
+        },
+        {
+          "name": "ip4",
+          "streams_in": [
+            {
+              "name": "tfc_ip3_Relu_ip4",
+              "coarse": 1
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "ip4_squeeze_ip4",
+              "coarse": 10
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 64,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 10,
+            "coarse_in": 1,
+            "coarse_out": 10,
+            "filters": 10,
+            "data_width": 16,
+            "weight_width": 16,
+            "acc_width": 16,
+            "input_width": 16,
+            "output_width": 16,
+            "has_bias": 1,
+            "biases_width": 16
+          },
+          "node_in": "tfc_ip3_Relu",
+          "node_out": "squeeze_ip4",
+          "type": "INNER_PRODUCT",
+          "weights_path": "tfc/ip4/MatMul/ReadVariableOp:0",
+          "bias_path": "tfc/ip4/MatMul/ReadVariableOp:0_bias"
+        },
+        {
+          "name": "squeeze_ip4",
+          "streams_in": [
+            {
+              "name": "ip4_squeeze_ip4",
+              "coarse": 10
+            }
+          ],
+          "streams_out": [
+            {
+              "name": "out",
+              "coarse": 2
+            }
+          ],
+          "parameters": {
+            "buffer_depth": 0,
+            "batch_size": 1,
+            "rows_in": 1,
+            "cols_in": 1,
+            "channels_in": 10,
+            "rows_out": 1,
+            "cols_out": 1,
+            "channels_out": 10,
+            "coarse_in": 10,
+            "coarse_out": 2,
+            "data_width": 16
+          },
+          "node_in": "ip4",
+          "node_out": "squeeze_ip4",
+          "type": "SQUEEZE"
+        }
+      ]
+    }
+  ]
+}

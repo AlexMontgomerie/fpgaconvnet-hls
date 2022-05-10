@@ -23,10 +23,14 @@ class GenerateNetwork:
         from the `partition_path`
     """
 
-    def __init__(self, name, partition_path, model_path):
+    def __init__(self, name, partition_path, model_path, fpga_part="xc7z045ffg900-2", clk=5):
 
         # save name
         self.name = name
+
+        # save platform information
+        self.fpga_part = fpga_part
+        self.clk = clk
 
         # load partition information
         self.partitions = fpgaconvnet.proto.fpgaconvnet_pb2.partitions()
@@ -95,7 +99,8 @@ class GenerateNetwork:
         self.partitions_generator[partition_index].generate_testbench()
 
         # create HLS project
-        self.partitions_generator[partition_index].create_vivado_hls_project()
+        self.partitions_generator[partition_index].create_vivado_hls_project(
+                fpga_part=self.fpga_part, clk=self.clk)
 
         # set project generated flag
         self.is_generated["project"] = True
@@ -124,7 +129,7 @@ class GenerateNetwork:
         # set hardware generation flag
         self.is_generated["hardware"] = True
 
-    def run_testbench(self, partition_index, image):
+    def run_testbench(self, partition_index, image=None):
         """
         Generates the hardware for the given parititon in the network.
         Creates the HLS project, runs HLS synthesis and then packages the
@@ -139,11 +144,38 @@ class GenerateNetwork:
             print("WARNING: partition project not created! creating now ...")
             self.create_partition_project(partition_index)
 
-        # create the testbench data
-        self.partitions_generator[partition_index].create_testbench_data(image)
+        if image is not None:
+            # create the testbench data
+            self.partitions_generator[partition_index].create_testbench_data(image)
 
         # run the c-simulation
         self.partitions_generator[partition_index].run_csim()
+
+    def run_cosimulation(self, partition_index, image=None):
+        """
+        Generates the hardware for the given parititon in the network.
+        Creates the HLS project, runs HLS synthesis and then packages the
+        generated IP.
+
+        Parameters
+        ----------
+        partition_index: int
+        """
+
+        if not self.is_generated["project"]:
+            print("WARNING: partition project not created! creating now ...")
+            self.create_partition_project(partition_index)
+
+        # if not self.is_generated["hardware"]:
+        #     print("WARNING: partition has not been generated! generating now ...")
+        #     self.generate_partition_hardware(partition_index)
+
+        if image is not None:
+            # create the testbench data
+            self.partitions_generator[partition_index].create_testbench_data(image)
+
+        # run the c-simulation
+        self.partitions_generator[partition_index].run_cosim()
 
     def generate_all_partitions(self, num_jobs=1):
         """

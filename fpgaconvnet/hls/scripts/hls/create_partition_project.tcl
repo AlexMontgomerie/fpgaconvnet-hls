@@ -8,32 +8,32 @@ source ${fpgaconvnet_root}/scripts/hls/tcl_getopt.tcl
 set hls_arg [ lindex $argv 2 ]
 
 # get arguments (arg)   (variable)      (defaults)
-getopt $hls_arg -name   name            ""
 getopt $hls_arg -prj    project_path    ""
 getopt $hls_arg -fpga   fpga            "xc7z045ffg900-2"
 getopt $hls_arg -clk    clk_period      "5"
 
-puts "project: ${name}"
-puts "path: ${project_path}"
+puts "project: ${project_path}"
 
 # default cflags
-set default_cflags "-std=c++11 -I${project_path}/include -I${project_path}/data"
+set default_cflags "-std=c++11 -I${project_path}/include -I${project_path}/data -I${fpgaconvnet_root}/hardware"
 
 # create open project
-open_project -reset ${name}
+open_project ${project_path}
 
 # set top function
 set_top fpgaconvnet_ip
 
 # add files to the project
-add_files [ glob ${project_path}/src/*.cpp ] -cflags "${default_cflags} -I${fpgaconvnet_root}/hardware"
+add_files [ glob ${project_path}/src/*.cpp ] -cflags "${default_cflags}"
 
 # add testbench file to the project
 add_files -tb [ glob ${project_path}/tb/*.cpp ] -cflags "${default_cflags}"
-add_files -tb [ glob ${project_path}/data/*.dat ] -cflags "${default_cflags}"
+
+# add any data files
+add_files -tb [ glob ${project_path}/data/*.dat ]
 
 # create the solution
-open_solution -reset "solution"
+open_solution "solution"
 
 # set FPGA part
 set_part $fpga -tool vivado
