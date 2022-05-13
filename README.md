@@ -7,7 +7,7 @@ The HLS repository contains the hardware implementation of CNN building blocks, 
 
 The following programs are required:
 
-1. Vivado HLS
+1. Vivado HLS (2019.1, 2019.2)
 2. python (>=3.8)
 
 Once these programs are installed, you can setup the project from pypi:
