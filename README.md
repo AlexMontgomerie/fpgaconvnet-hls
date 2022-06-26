@@ -1,50 +1,38 @@
 # fpgaConvNet HLS
 
-This is CNN-to-FPGA mapping framework designed to find the optimal implementation of a CNN architecture on an FPGA for power, latency and throughput driven designs.
+This repository is part of the fpgaConvNet framework, designed to solve the complex mapping problem of Convolutional Neural Networks (CNN) onto Field Programmable Gate Array (FPGA) devices.
+The HLS repository contains the hardware implementation of CNN building blocks, and performs the mapping automation of a CNN model description to hardware.
 
 ## Setup
 
-_This project has only been verified on Ubuntu 18.04_
+The following programs are required:
 
-The following programmes are needed:
+1. Vivado HLS (2019.1, 2019.2)
+2. python (>=3.8)
 
-1. Vivado 2019.1
-2. Anaconda
-3. yaml-cpp (version 0.5.3)
-
-Also, you will need to add the environmental variable `FPGACONVNET_OPTIMISER` that points to the install directory of [fpgaconvnet-hls](https://github.com/AlexMontgomerie/fpgaconvnet-optimiser).
-
-> You will need to use the same python environment as fpgaconvnet-hls also
-
-### Vivado Setup
-
-To install Vivado 2019.1, first [download](https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/vivado-design-tools/2019-1.html) from the Xilinx website.
-
-Once installed, you will need to add a license server to your .bashrc file. You will also need to add Vivado to your path. To do so, add the following to your .basrc:
+Once these programs are installed, you can setup the project from pypi:
 
 ```
-export PATH=/tools/Xilinx/Vivado/2019.1/bin:$PATH
-export PATH=/tools/Xilinx/SDK/2019.1/bin:$PATH
+python -m pip install fpgaconvnet-hls
 ```
 
+## Usage
 
-You will need to setup JTAG drivers to program a device. To do so, execute the following script:
+You can see example usage in the `tests/networks` folder as well as in the [fpgaconvnet-tutorial](https://github.com/AlexMontgomerie/fpgaconvnet-tutorial) repository. Below is a quick example of how a configuration can be loaded and used to generate and test hardware.
 
-```
-/tools/Xilinx/Vivado/2019.1/data/xicom/cable_drivers/lin64/install_script/install_drivers/install_drivers
-```
+```python
+from fpgaconvnet.hls.generate.network import GenerateNetwork
 
-For more information, visit [here](https://www.xilinx.com/support/answers/59128.html).
+# create instance of the network
+gen_net = GenerateNetwork("model-name", "model-config.json", "model.onnx")
 
-Finally, there is a known [bug](http://svn.clifford.at/handicraft/2017/vivadobugs/vivadobug04.txt) to do with C++ libraries. A workaround for this is adding the `mpfr.h` and `gmp.h` headers manually. For this project, you need to create a header file `include/system.hpp` which includes the following:
+# generate hardware and create HLS project for partition 0
+gen_net.create_partition_project(0)
 
-```C
-#ifndef SYSTEM_HPP_
-#define SYSTEM_HPP_
-
-#include "(path to Vivado 2019.1)/include/gmp.h"
-#include "(path to Vivado 2019.1)/include/mpfr.h"
-
-#endif
+# run HLS synthesis for partition 0
+gen_net.generate_partition_hardware(0)
 ```
 
+---
+
+Please feel free to ask questions or post any issues!
