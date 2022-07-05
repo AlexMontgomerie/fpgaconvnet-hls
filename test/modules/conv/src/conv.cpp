@@ -36,6 +36,9 @@ void conv_top(
         conv_data_t,
         conv_weight_t,
         conv_acc_t
+#if (CONV_FILTERS == 1) && (CONV_CHANNELS_PER_GROUP == 1)
+        , conv_acc_t
+#endif
 #if (CONV_KERNEL_SIZE_0 == 1) && (CONV_KERNEL_SIZE_1 == 1)
     >(in[0][0],weights,out);
 #else

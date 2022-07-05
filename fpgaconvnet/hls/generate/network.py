@@ -89,7 +89,7 @@ class GenerateNetwork:
             "hardware" : False
         }
 
-    def create_partition_project(self, partition_index):
+    def create_partition_project(self, partition_index, reset=False):
         # generate each part of the partition
         self.partitions_generator[partition_index].generate_layers()
         self.partitions_generator[partition_index].generate_parameters()

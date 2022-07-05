@@ -24,6 +24,9 @@ conv_template = """
 {indent}    {data_t},
 {indent}    {weight_t},
 {indent}    {acc_t}
+#if ({NAME}_FILTERS == 1) && ({NAME}_CHANNELS_PER_GROUP == 1)
+{indent}    ,{acc_t}
+#endif
 {indent}>({input_stream},{weights_stream},{output_stream});
 """
 

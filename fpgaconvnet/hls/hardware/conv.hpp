@@ -324,71 +324,72 @@ DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_fa
  *  - single channel per group
  */
 
-/* template< */
-/*     unsigned int BATCH_SIZE, */
-/*     unsigned int ROWS, */
-/*     unsigned int COLS, */
-/*     unsigned int CHANNELS, */
-/*     unsigned int GROUPS, */
-/*     unsigned int FINE, */
-/*     unsigned int KERNEL_SIZE_X, */
-/*     unsigned int KERNEL_SIZE_Y, */
-/*     typename conv_data_t, */
-/*     typename conv_weight_t */
-/* > */
-/* void conv_intr( */
-/*     stream_t(conv_data_t)    in[KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     const conv_weight_t      weights[1][KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     stream_t(conv_data_t)    window_stream[FINE], */
-/*     stream_t(conv_weight_t)  weight_stream[FINE] */
-/* ) */
-/* { */
+template<
+    unsigned int BATCH_SIZE,
+    unsigned int ROWS,
+    unsigned int COLS,
+    unsigned int CHANNELS,
+    unsigned int GROUPS,
+    unsigned int FINE,
+    unsigned int KERNEL_SIZE_X,
+    unsigned int KERNEL_SIZE_Y,
+    typename conv_data_t,
+    typename conv_weight_t,
+    typename hack
+>
+void conv_intr(
+    stream_t(conv_data_t)    in[KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    const conv_weight_t      weights[1][KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    stream_t(conv_data_t)    window_stream[FINE],
+    stream_t(conv_weight_t)  weight_stream[FINE]
+)
+{
 
-/* #pragma HLS INLINE OFF */
+#pragma HLS INLINE OFF
 
-/*     const unsigned int batch_size    = BATCH_SIZE; */
-/*     const unsigned int rows          = ROWS; */
-/*     const unsigned int cols          = COLS; */
-/*     const unsigned int channels      = CHANNELS; */
-/*     const unsigned int groups        = GROUPS; */
-/*     const unsigned int kernel_size_x = KERNEL_SIZE_X; */
-/*     const unsigned int kernel_size_y = KERNEL_SIZE_Y; */
-/*     const unsigned int fine          = FINE; */
-/*     const unsigned int interval      = DIVIDE(kernel_size_x*kernel_size_y,fine); */
+    const unsigned int batch_size    = BATCH_SIZE;
+    const unsigned int rows          = ROWS;
+    const unsigned int cols          = COLS;
+    const unsigned int channels      = CHANNELS;
+    const unsigned int groups        = GROUPS;
+    const unsigned int kernel_size_x = KERNEL_SIZE_X;
+    const unsigned int kernel_size_y = KERNEL_SIZE_Y;
+    const unsigned int fine          = FINE;
+    const unsigned int interval      = DIVIDE(kernel_size_x*kernel_size_y,fine);
 
-/*     const unsigned int channels_per_group = 1; */
+    const unsigned int channels_per_group = 1;
 
-/* #pragma HLS STREAM variable=in */
-/* #pragma HLS STREAM variable=window_stream */
-/* #pragma HLS STREAM variable=weight_stream */
+#pragma HLS STREAM variable=in
+#pragma HLS STREAM variable=window_stream
+#pragma HLS STREAM variable=weight_stream
 
-/* #pragma HLS ARRAY_PARTITION variable=in complete dim=0 */
-/* #pragma HLS ARRAY_PARTITION variable=window_stream complete dim=0 */
-/* #pragma HLS ARRAY_PARTITION variable=weight_stream complete dim=0 */
+#pragma HLS ARRAY_PARTITION variable=in complete dim=0
+#pragma HLS ARRAY_PARTITION variable=window_stream complete dim=0
+#pragma HLS ARRAY_PARTITION variable=weight_stream complete dim=0
 
-/*     // partition the weights correctly */
-/*     const unsigned int weights_partition_factor_k1 = MIN(fine,kernel_size_x); */
-/*     const unsigned int weights_partition_factor_k2 = (fine<=kernel_size_x) ? 1 : kernel_size_y; */
+    // partition the weights correctly
+    const unsigned int weights_partition_factor_k1 = MIN(fine,kernel_size_x);
+    const unsigned int weights_partition_factor_k2 = (fine<=kernel_size_x) ? 1 : kernel_size_y;
 
-/* DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k1 dim=2) */
-/* DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k2 dim=3) */
+DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k1 dim=2)
+DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k2 dim=3)
 
-/*     // window cache */
-/*     conv_data_t window_cache[kernel_size_x][kernel_size_y]; */
-/*     #pragma HLS ARRAY_PARTITION variable=window_cache complete dim=0 */
-/*     #pragma HLS dependence variable=window_cache intra RAW true */
-/*     DO_PRAGMA( HLS dependence variable=window_cache inter WAW true distance=batch_size*rows*cols*channels ) */
+    // window cache
+    conv_data_t window_cache[kernel_size_x][kernel_size_y];
+    #pragma HLS ARRAY_PARTITION variable=window_cache complete dim=0
+    #pragma HLS dependence variable=window_cache intra RAW true
+    DO_PRAGMA( HLS dependence variable=window_cache inter WAW true distance=batch_size*rows*cols*channels )
 
-/*     for(unsigned int pixel_index=0;pixel_index<batch_size*rows*cols;pixel_index++) { */
-/*         unsigned int weight_index = 0; */
-/*         DO_PRAGMA( HLS PIPELINE II=interval ) */
-/*         conv_intr_inner<BATCH_SIZE, ROWS, COLS, CHANNELS, 1, */
-/*             GROUPS, FINE, KERNEL_SIZE_X, KERNEL_SIZE_Y, */
-/*             conv_data_t, conv_weight_t>(in, weights, window_stream, */
-/*                     weight_stream, window_cache, 0, weight_index); */
-/*         weight_index++; */
-/*     } */
-/* } */
+    for(unsigned int pixel_index=0;pixel_index<batch_size*rows*cols;pixel_index++) {
+        unsigned int weight_index = 0;
+        DO_PRAGMA( HLS PIPELINE II=interval )
+        conv_intr_inner<BATCH_SIZE, ROWS, COLS, CHANNELS, 1,
+            GROUPS, FINE, KERNEL_SIZE_X, KERNEL_SIZE_Y,
+            conv_data_t, conv_weight_t>(in, weights, window_stream,
+                    weight_stream, window_cache, 0, weight_index);
+        weight_index++;
+    }
+}
 
 /**
  *  conv intr
@@ -606,63 +607,63 @@ DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_fa
  *  - single channel per group
  */
 
-/* template< */
-/*     unsigned int CHANNELS, */
-/*     unsigned int GROUPS, */
-/*     unsigned int FINE, */
-/*     unsigned int KERNEL_SIZE_X, */
-/*     unsigned int KERNEL_SIZE_Y, */
-/*     typename conv_data_t, */
-/*     typename conv_weight_t */
-/* > */
-/* void conv_intr( */
-/*     stream_t(conv_data_t)    in[KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     const conv_weight_t      weights[1][KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     stream_t(conv_data_t)    window_stream[FINE], */
-/*     stream_t(conv_weight_t)  weight_stream[FINE] */
-/* ) */
-/* { */
+template<
+    unsigned int CHANNELS,
+    unsigned int GROUPS,
+    unsigned int FINE,
+    unsigned int KERNEL_SIZE_X,
+    unsigned int KERNEL_SIZE_Y,
+    typename conv_data_t,
+    typename conv_weight_t
+>
+void conv_intr(
+    stream_t(conv_data_t)    in[KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    const conv_weight_t      weights[1][KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    stream_t(conv_data_t)    window_stream[FINE],
+    stream_t(conv_weight_t)  weight_stream[FINE]
+)
+{
 
-/* #pragma HLS INLINE OFF */
+#pragma HLS INLINE OFF
 
-/*     const unsigned int channels      = CHANNELS; */
-/*     const unsigned int groups        = GROUPS; */
-/*     const unsigned int kernel_size_x = KERNEL_SIZE_X; */
-/*     const unsigned int kernel_size_y = KERNEL_SIZE_Y; */
-/*     const unsigned int fine          = FINE; */
-/*     const unsigned int interval      = DIVIDE(kernel_size_x*kernel_size_y,fine); */
+    const unsigned int channels      = CHANNELS;
+    const unsigned int groups        = GROUPS;
+    const unsigned int kernel_size_x = KERNEL_SIZE_X;
+    const unsigned int kernel_size_y = KERNEL_SIZE_Y;
+    const unsigned int fine          = FINE;
+    const unsigned int interval      = DIVIDE(kernel_size_x*kernel_size_y,fine);
 
-/*     const unsigned int channels_per_group = 1; */
+    const unsigned int channels_per_group = 1;
 
-/* #pragma HLS STREAM variable=in */
-/* #pragma HLS STREAM variable=window_stream */
-/* #pragma HLS STREAM variable=weight_stream */
+#pragma HLS STREAM variable=in
+#pragma HLS STREAM variable=window_stream
+#pragma HLS STREAM variable=weight_stream
 
-/* #pragma HLS ARRAY_PARTITION variable=in complete dim=0 */
-/* #pragma HLS ARRAY_PARTITION variable=window_stream complete dim=0 */
-/* #pragma HLS ARRAY_PARTITION variable=weight_stream complete dim=0 */
+#pragma HLS ARRAY_PARTITION variable=in complete dim=0
+#pragma HLS ARRAY_PARTITION variable=window_stream complete dim=0
+#pragma HLS ARRAY_PARTITION variable=weight_stream complete dim=0
 
-/*     // partition the weights correctly */
-/*     const unsigned int weights_partition_factor_k1 = MIN(fine,kernel_size_x); */
-/*     const unsigned int weights_partition_factor_k2 = (fine<=kernel_size_x) ? 1 : kernel_size_y; */
+    // partition the weights correctly
+    const unsigned int weights_partition_factor_k1 = MIN(fine,kernel_size_x);
+    const unsigned int weights_partition_factor_k2 = (fine<=kernel_size_x) ? 1 : kernel_size_y;
 
-/* DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k1 dim=2) */
-/* DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k2 dim=3) */
+DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k1 dim=2)
+DO_PRAGMA(HLS ARRAY_PARTITION variable=weights block factor=weights_partition_factor_k2 dim=3)
 
-/*     // window cache */
-/*     conv_data_t window_cache[kernel_size_x][kernel_size_y]; */
-/*     #pragma HLS ARRAY_PARTITION variable=window_cache complete dim=0 */
-/*     #pragma HLS dependence variable=window_cache intra RAW true */
-/*     DO_PRAGMA( HLS dependence variable=window_cache inter WAW true distance=channels ) */
+    // window cache
+    conv_data_t window_cache[kernel_size_x][kernel_size_y];
+    #pragma HLS ARRAY_PARTITION variable=window_cache complete dim=0
+    #pragma HLS dependence variable=window_cache intra RAW true
+    DO_PRAGMA( HLS dependence variable=window_cache inter WAW true distance=channels )
 
-/*     unsigned int weight_index = 0; */
-/*     DO_PRAGMA( HLS PIPELINE II=interval ) */
-/*     conv_intr_inner<1, 1, 1, CHANNELS, 1, */
-/*         GROUPS, FINE, KERNEL_SIZE_X, KERNEL_SIZE_Y, */
-/*         conv_data_t, conv_weight_t>(in, weights, window_stream, */
-/*                 weight_stream, window_cache, 0, weight_index); */
-/*     weight_index++; */
-/* } */
+    unsigned int weight_index = 0;
+    DO_PRAGMA( HLS PIPELINE II=interval )
+    conv_intr_inner<1, 1, 1, CHANNELS, 1,
+        GROUPS, FINE, KERNEL_SIZE_X, KERNEL_SIZE_Y,
+        conv_data_t, conv_weight_t>(in, weights, window_stream,
+                weight_stream, window_cache, 0, weight_index);
+    weight_index++;
+}
 
 /**
  *  conv mul
@@ -1061,86 +1062,88 @@ void conv(
  *  - single channel per group
  */
 
-/* template< */
-/*     unsigned int BATCH_SIZE, */
-/*     unsigned int ROWS, */
-/*     unsigned int COLS, */
-/*     unsigned int CHANNELS, */
-/*     unsigned int GROUPS, */
-/*     unsigned int FINE, */
-/*     unsigned int KERNEL_SIZE_X, */
-/*     unsigned int KERNEL_SIZE_Y, */
-/*     typename conv_data_t, */
-/*     typename conv_weight_t, */
-/*     typename conv_acc_t */
-/* > */
-/* void conv( */
-/*     stream_t(conv_data_t) in[KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     const conv_weight_t weights[DIVIDE(CHANNELS,GROUPS)][KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     stream_t(conv_acc_t) &out */
-/* ) */
-/* { */
+template<
+    unsigned int BATCH_SIZE,
+    unsigned int ROWS,
+    unsigned int COLS,
+    unsigned int CHANNELS,
+    unsigned int GROUPS,
+    unsigned int FINE,
+    unsigned int KERNEL_SIZE_X,
+    unsigned int KERNEL_SIZE_Y,
+    typename conv_data_t,
+    typename conv_weight_t,
+    typename conv_acc_t,
+    typename hack
+>
+void conv(
+    stream_t(conv_data_t) in[KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    const conv_weight_t weights[DIVIDE(CHANNELS,GROUPS)][KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    stream_t(conv_acc_t) &out
+)
+{
 
-/* #pragma HLS INLINE OFF */
-/* #pragma HLS DATAFLOW */
+#pragma HLS INLINE OFF
+#pragma HLS DATAFLOW
 
-/* #pragma HLS STREAM variable=in */
-/* #pragma HLS STREAM variable=out */
+#pragma HLS STREAM variable=in
+#pragma HLS STREAM variable=out
 
-/* #pragma HLS ARRAY_PARTITION variable=in complete dim=0 */
+#pragma HLS ARRAY_PARTITION variable=in complete dim=0
 
-/*     const unsigned int fine = FINE; */
+    const unsigned int fine = FINE;
 
-/*     stream_t(conv_data_t) window_stream[fine]; */
-/*     stream_t(conv_weight_t) weight_stream[fine]; */
-/*     stream_t(conv_acc_t) acc_stream[fine]; */
+    stream_t(conv_data_t) window_stream[fine];
+    stream_t(conv_weight_t) weight_stream[fine];
+    stream_t(conv_acc_t) acc_stream[fine];
 
-/*     #pragma HLS STREAM variable=window_stream */
-/*     #pragma HLS STREAM variable=weight_stream */
-/*     #pragma HLS STREAM variable=acc_stream */
+    #pragma HLS STREAM variable=window_stream
+    #pragma HLS STREAM variable=weight_stream
+    #pragma HLS STREAM variable=acc_stream
 
-/*     conv_intr< */
-/*         BATCH_SIZE, */
-/*         ROWS, */
-/*         COLS, */
-/*         CHANNELS, */
-/*         GROUPS, */
-/*         FINE, */
-/*         KERNEL_SIZE_X, */
-/*         KERNEL_SIZE_Y, */
-/*         conv_data_t, */
-/*         conv_weight_t */
-/*     >(in,weights,window_stream,weight_stream); */
+    conv_intr<
+        BATCH_SIZE,
+        ROWS,
+        COLS,
+        CHANNELS,
+        GROUPS,
+        FINE,
+        KERNEL_SIZE_X,
+        KERNEL_SIZE_Y,
+        conv_data_t,
+        conv_weight_t,
+        hack
+    >(in,weights,window_stream,weight_stream);
 
-/*     conv_mul< */
-/*         BATCH_SIZE, */
-/*         ROWS, */
-/*         COLS, */
-/*         CHANNELS, */
-/*         1, */
-/*         GROUPS, */
-/*         FINE, */
-/*         KERNEL_SIZE_X, */
-/*         KERNEL_SIZE_Y, */
-/*         conv_data_t, */
-/*         conv_weight_t, */
-/*         conv_acc_t */
-/*     >(window_stream,weight_stream,acc_stream); */
+    conv_mul<
+        BATCH_SIZE,
+        ROWS,
+        COLS,
+        CHANNELS,
+        1,
+        GROUPS,
+        FINE,
+        KERNEL_SIZE_X,
+        KERNEL_SIZE_Y,
+        conv_data_t,
+        conv_weight_t,
+        conv_acc_t
+    >(window_stream,weight_stream,acc_stream);
 
-/*     conv_acc< */
-/*         BATCH_SIZE, */
-/*         ROWS, */
-/*         COLS, */
-/*         CHANNELS, */
-/*         1, */
-/*         GROUPS, */
-/*         FINE, */
-/*         KERNEL_SIZE_X, */
-/*         KERNEL_SIZE_Y, */
-/*         conv_acc_t */
-/*     >(acc_stream, out); */
+    conv_acc<
+        BATCH_SIZE,
+        ROWS,
+        COLS,
+        CHANNELS,
+        1,
+        GROUPS,
+        FINE,
+        KERNEL_SIZE_X,
+        KERNEL_SIZE_Y,
+        conv_acc_t
+    >(acc_stream, out);
 
-/* } */
+}
 
 /**
  *  conv
@@ -1413,80 +1416,80 @@ void conv(
  *  - single channel per group
  */
 
-/* template< */
-/*     unsigned int CHANNELS, */
-/*     unsigned int GROUPS, */
-/*     unsigned int FINE, */
-/*     unsigned int KERNEL_SIZE_X, */
-/*     unsigned int KERNEL_SIZE_Y, */
-/*     typename conv_data_t, */
-/*     typename conv_weight_t, */
-/*     typename conv_acc_t */
-/* > */
-/* void conv( */
-/*     stream_t(conv_data_t) in[KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     const conv_weight_t weights[1][KERNEL_SIZE_X][KERNEL_SIZE_Y], */
-/*     stream_t(conv_acc_t) &out */
-/* ) */
-/* { */
+template<
+    unsigned int CHANNELS,
+    unsigned int GROUPS,
+    unsigned int FINE,
+    unsigned int KERNEL_SIZE_X,
+    unsigned int KERNEL_SIZE_Y,
+    typename conv_data_t,
+    typename conv_weight_t,
+    typename conv_acc_t
+>
+void conv(
+    stream_t(conv_data_t) in[KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    const conv_weight_t weights[1][KERNEL_SIZE_X][KERNEL_SIZE_Y],
+    stream_t(conv_acc_t) &out
+)
+{
 
-/* #pragma HLS INLINE OFF */
-/* #pragma HLS DATAFLOW */
+#pragma HLS INLINE OFF
+#pragma HLS DATAFLOW
 
-/* #pragma HLS STREAM variable=in */
-/* #pragma HLS STREAM variable=out */
+#pragma HLS STREAM variable=in
+#pragma HLS STREAM variable=out
 
-/* #pragma HLS ARRAY_PARTITION variable=in complete dim=0 */
+#pragma HLS ARRAY_PARTITION variable=in complete dim=0
 
-/*     const unsigned int fine = FINE; */
+    const unsigned int fine = FINE;
 
-/*     stream_t(conv_data_t) window_stream[fine]; */
-/*     stream_t(conv_weight_t) weight_stream[fine]; */
-/*     stream_t(conv_acc_t) acc_stream[fine]; */
+    stream_t(conv_data_t) window_stream[fine];
+    stream_t(conv_weight_t) weight_stream[fine];
+    stream_t(conv_acc_t) acc_stream[fine];
 
-/*     #pragma HLS STREAM variable=window_stream */
-/*     #pragma HLS STREAM variable=weight_stream */
-/*     #pragma HLS STREAM variable=acc_stream */
+    #pragma HLS STREAM variable=window_stream
+    #pragma HLS STREAM variable=weight_stream
+    #pragma HLS STREAM variable=acc_stream
 
-/*     conv_intr< */
-/*         CHANNELS, */
-/*         GROUPS, */
-/*         FINE, */
-/*         KERNEL_SIZE_X, */
-/*         KERNEL_SIZE_Y, */
-/*         conv_data_t, */
-/*         conv_weight_t */
-/*     >(in,weights,window_stream,weight_stream); */
+    conv_intr<
+        CHANNELS,
+        GROUPS,
+        FINE,
+        KERNEL_SIZE_X,
+        KERNEL_SIZE_Y,
+        conv_data_t,
+        conv_weight_t
+    >(in,weights,window_stream,weight_stream);
 
-/*     conv_mul< */
-/*         1, */
-/*         1, */
-/*         1, */
-/*         CHANNELS, */
-/*         1, */
-/*         GROUPS, */
-/*         FINE, */
-/*         KERNEL_SIZE_X, */
-/*         KERNEL_SIZE_Y, */
-/*         conv_data_t, */
-/*         conv_weight_t, */
-/*         conv_acc_t */
-/*     >(window_stream,weight_stream,acc_stream); */
+    conv_mul<
+        1,
+        1,
+        1,
+        CHANNELS,
+        1,
+        GROUPS,
+        FINE,
+        KERNEL_SIZE_X,
+        KERNEL_SIZE_Y,
+        conv_data_t,
+        conv_weight_t,
+        conv_acc_t
+    >(window_stream,weight_stream,acc_stream);
 
-/*     conv_acc< */
-/*         1, */
-/*         1, */
-/*         1, */
-/*         CHANNELS, */
-/*         1, */
-/*         GROUPS, */
-/*         FINE, */
-/*         KERNEL_SIZE_X, */
-/*         KERNEL_SIZE_Y, */
-/*         conv_acc_t */
-/*     >(acc_stream, out); */
+    conv_acc<
+        1,
+        1,
+        1,
+        CHANNELS,
+        1,
+        GROUPS,
+        FINE,
+        KERNEL_SIZE_X,
+        KERNEL_SIZE_Y,
+        conv_acc_t
+    >(acc_stream, out);
 
-/* } */
+}
 
 /**
  *  point-wise convolution

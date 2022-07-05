@@ -1,0 +1,16 @@
+{
+    "rows": 28,
+    "cols": 28,
+    "channels": 1,
+    "filters": 1,
+    "kernel_size": [5,5],
+    "groups": 1,
+    "fine": 25,
+    "batch_size": 1,
+    "input_width": 16,
+    "data_width": 16,
+    "acc_width": 16,
+    "weight_width": 16,
+    "description": "layer name: conv1, net name: brchy lenet bb, NO BIAS"
+}
+
