@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="fpgaconvnet-hls",
-    version="0.1.0",
+    version="0.1.1",
     author="Alex Montgomerie",
     author_email="am9215@ic.ac.uk",
     description="Optimiser for mapping convolutional neural network models to FPGA platforms.",
