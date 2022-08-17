@@ -16,7 +16,6 @@ data/
 **.bin
 **.csv
 **.yaml
-**.yml
 rpt/
 
 runs/**/logs/
