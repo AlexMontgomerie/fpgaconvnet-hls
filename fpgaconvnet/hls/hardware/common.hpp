@@ -28,7 +28,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#define ERROR_TOLERANCE 0.20
+// hlslib imports
+#include "hlslib/xilinx/Flatten.h"
+
+#define ERROR_TOLERANCE 0.2
 
 // macro for template variable pragmas
 #define PRAGMA_SUB(x) _Pragma (#x)
@@ -43,6 +46,7 @@
 
 // macro for stream wrapper
 #define stream_t(x) hls::stream<x>
+/* #define stream_t(x) hlslib::Stream<x> */
 
 // default data types
 typedef unsigned long mem_int;

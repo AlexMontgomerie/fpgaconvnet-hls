@@ -265,7 +265,8 @@ void sliding_window_line_shift(
     #pragma HLS ARRAY_PARTITION variable=frame_buffer complete dim=0
 
     stream_t(sliding_window_t) line_buffer[kernel_size_x-1];
-    DO_PRAGMA( HLS STREAM variable=line_buffer depth=cols*channels+pad_left*channels+pad_right*channels+1 )
+    const unsigned line_buffer_depth = cols*channels+pad_left*channels+pad_right*channels+1;
+    DO_PRAGMA( HLS STREAM variable=line_buffer depth=line_buffer_depth )
     #pragma HLS ARRAY_PARTITION variable=line_buffer complete dim=0
     #pragma HLS resource variable=line_buffer core=FIFO_BRAM
 
@@ -277,96 +278,126 @@ void sliding_window_line_shift(
     sliding_window_t frame_cache[kernel_size_x][kernel_size_y];
     #pragma HLS ARRAY_PARTITION variable=frame_cache complete dim=0
 
-    in_loop_batch: for(unsigned int batch_index=0;batch_index<batch_size;batch_index++) {
-        in_loop_rows: for(unsigned int row_index=0;row_index<rows+pad_bottom+pad_top;row_index++) {
-            in_loop_cols: for(unsigned int col_index=0;col_index<cols+pad_left+pad_right;col_index++) {
-                in_loop_channels: for(unsigned int channel_index=0;channel_index<channels;channel_index++) {
+    // loops
+    auto loops = hlslib::ConstFlatten<
+        0, batch_size, 1, // batch loop
+        0, rows+pad_bottom+pad_top, 1, // rows loop
+        0, cols+pad_left+pad_right, 1, // cols loop
+        0, channels, 1 // channel loop
+    >();
 
-                    #pragma HLS loop_flatten
-                    #pragma HLS PIPELINE II=1 rewind
-                    #pragma HLS DEPENDENCE variable=line_buffer     WAR intra true
-                    #pragma HLS DEPENDENCE variable=window_buffer   WAR intra true
-                    #pragma HLS DEPENDENCE variable=frame_cache     WAR intra true
-                    sliding_window_t pixel;
+    unsigned int cache_index = 0;
 
-                    // read in pixel
-                    if( row_index < pad_bottom ) {
-                        pixel = 0;
-                    }
-                    else if ( row_index > rows+pad_bottom-1 ) {
-                        pixel = 0;
-                    }
-                    else if ( col_index < pad_left ) {
-                        pixel = 0;
-                    }
-                    else if (col_index > cols+pad_left-1 ) {
-                        pixel = 0;
-                    }
-                    else {
-                        pixel = in.read();
-                    }
+    batch_row_col_channel_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
 
-                    // init first part of window cache
-                    if ( (row_index < kernel_size_x-1) ) {
-                        // fill window cache
-                        if( col_index < kernel_size_y-1 ) {
-                            window_buffer[row_index][col_index].write(pixel);
-                            frame_cache[row_index][col_index] = pixel;
-                            if ( row_index > 0 ) {
-                                line_buffer[row_index-1].write(pixel);
-                            }
+        // pragma
+        #pragma HLS PIPELINE II=1 rewind
+        #pragma HLS DEPENDENCE variable=line_buffer     WAR intra true
+        #pragma HLS DEPENDENCE variable=window_buffer   WAR intra true
+        #pragma HLS DEPENDENCE variable=frame_cache     WAR intra true
+
+        // loop indices
+        auto row_index = loops[1];
+        auto col_index = loops[2];
+        auto channel_index = loops[3];
+
+        // pixel cache
+        sliding_window_t pixel;
+
+        // pixel padding
+        if( row_index < pad_bottom ) {
+            pixel = 0;
+        }
+        else if ( row_index > rows+pad_bottom-1 ) {
+            pixel = 0;
+        }
+        else if ( col_index < pad_left ) {
+            pixel = 0;
+        }
+        else if (col_index > cols+pad_left-1 ) {
+            pixel = 0;
+        }
+        else {
+            pixel = in.read();
+        }
+
+        // init first part of window cache
+        if ( (row_index < kernel_size_x-1) ) {
+            // fill window cache
+            if( col_index < kernel_size_y-1 ) {
+                frame_cache[row_index][col_index] = pixel;
+                if ( kernel_size_y > 1 ) {
+                    window_buffer[row_index][col_index].write(pixel);
+                }
+                if ( kernel_size_x > 1 ) {
+                    if ( row_index > 0 ) {
+                        line_buffer[row_index-1].write(pixel);
+                    }
+                }
+            }
+            else {
+                if ( kernel_size_x > 1 ) {
+                    line_buffer[row_index].write(pixel);
+                }
+            }
+        }
+
+        // fill top line of window buffer and line buffer
+        else if ( (row_index == (kernel_size_x-1)) && (col_index < kernel_size_y-1) ) {
+            frame_cache[row_index][col_index] = pixel;
+            if ( kernel_size_x > 1 ) {
+                line_buffer[kernel_size_x-2].write(pixel);
+            }
+            if ( kernel_size_y > 1 ) {
+                window_buffer[row_index][col_index].write(pixel);
+            }
+        }
+
+        // main loop
+        else {
+
+            // read window buffer into window cache
+            if ( kernel_size_y > 1 ) {
+                for(unsigned char k1=0;k1<kernel_size_x;k1++) {
+                    for(unsigned char k2=0;k2<kernel_size_y-1;k2++) {
+                        frame_cache[k1][k2] = window_buffer[k1][k2].read();
+                    }
+                }
+            }
+
+            // read out line buffer to window cache
+            if ( kernel_size_x > 1 ) {
+                for(unsigned char k1=0;k1<kernel_size_x-1;k1++) {
+                    frame_cache[k1][kernel_size_y-1] = line_buffer[k1].read();
+                }
+            }
+
+            // read the top corner into window cache
+            frame_cache[kernel_size_x-1][kernel_size_y-1] = pixel;
+
+            // update window buffer
+            if ( kernel_size_y > 1 ) {
+                if ( !( (row_index == rows+pad_top+pad_bottom-1) &&
+                            (col_index == cols+pad_left+pad_right-1) ) ) {
+                    for(unsigned char k1=0; k1 < kernel_size_x; k1++) {
+                        for(unsigned char k2=0; k2 < kernel_size_y-1; k2++) {
+                            window_buffer[k1][k2].write(frame_cache[k1][k2+1]);
                         }
-                        else {
-                            line_buffer[row_index].write(pixel);
-                        }
                     }
-
-                    // fill top line of window buffer and line buffer
-                    else if ( (row_index == (kernel_size_x-1)) && (col_index < kernel_size_y-1) ) {
-                        window_buffer[row_index][col_index].write(pixel);
-                        frame_cache[row_index][col_index] = pixel;
-                        line_buffer[kernel_size_x-2].write(pixel);
+                }
+            }
+            // update the line buffer
+            if ( kernel_size_x > 1 ) {
+                if ( !(row_index == rows+pad_top+pad_bottom-1) ) {
+                    for(unsigned char k1=0;k1<kernel_size_x-1;k1++) {
+                        line_buffer[k1].write(frame_cache[k1+1][kernel_size_y-1]);
                     }
-
-                    // main loop
-                    else {
-
-                        // read window buffer into window cache
-                        for(unsigned char k1=0;k1<kernel_size_x;k1++) {
-                            for(unsigned char k2=0;k2<kernel_size_y-1;k2++) {
-                                frame_cache[k1][k2] = window_buffer[k1][k2].read();
-                            }
-                        }
-
-                        // read out line buffer to window cache
-                        for(unsigned char k1=0;k1<kernel_size_x-1;k1++) {
-                            frame_cache[k1][kernel_size_y-1] = line_buffer[k1].read();
-                        }
-
-                        // read the top corner into window cache
-                        frame_cache[kernel_size_x-1][kernel_size_y-1] = pixel;
-
-                        // update window buffer
-                        if ( !( (row_index == rows+pad_top+pad_bottom-1) && (col_index == cols+pad_left+pad_right-1) ) ) {
-                            for(unsigned char k1=0;k1<kernel_size_x;k1++) {
-                                for(unsigned char k2=0;k2<kernel_size_y-1;k2++) {
-                                    window_buffer[k1][k2].write(frame_cache[k1][k2+1]);
-                                }
-                            }
-                        }
-                        // update the line buffer
-                        if ( !(row_index == rows+pad_top+pad_bottom-1) ) {
-                            for(unsigned char k1=0;k1<kernel_size_x-1;k1++) {
-                                line_buffer[k1].write(frame_cache[k1+1][kernel_size_y-1]);
-                            }
-                        }
-                        // send window cache to frame buffer
-                        for(unsigned char k1=0;k1<kernel_size_x;k1++) {
-                            for(unsigned char k2=0;k2<kernel_size_y;k2++) {
-                                frame_buffer[k1][k2].write(frame_cache[k1][k2]);
-                            }
-                        }
-                    }
+                }
+            }
+            // send window cache to frame buffer
+            for(unsigned char k1=0;k1<kernel_size_x;k1++) {
+                for(unsigned char k2=0;k2<kernel_size_y;k2++) {
+                    frame_buffer[k1][k2].write(frame_cache[k1][k2]);
                 }
             }
         }
