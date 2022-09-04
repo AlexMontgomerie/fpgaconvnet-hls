@@ -1,11 +1,9 @@
 pool_template="""
 {indent}pool<
-#if {NAME}_BATCH_SIZE*{NAME}_ROWS*{NAME}_COLS*{NAME}_CHANNELS > 1
 {indent}    {NAME}_BATCH_SIZE,
 {indent}    {NAME}_ROWS,
 {indent}    {NAME}_COLS,
 {indent}    {NAME}_CHANNELS,
-#endif
 {indent}    {NAME}_KERNEL_SIZE_X,
 {indent}    {NAME}_KERNEL_SIZE_Y,
 {indent}    {pool_t}

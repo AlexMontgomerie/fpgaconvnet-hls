@@ -15,12 +15,10 @@ void fork_top(
     #pragma HLS DATAFLOW
 
     fork<
-#if FORK_BATCH_SIZE*FORK_ROWS*FORK_COLS*FORK_CHANNELS > 1
         FORK_BATCH_SIZE,
         FORK_ROWS,
         FORK_COLS,
         FORK_CHANNELS,
-#endif
         FORK_COARSE,
 #if (FORK_KERNEL_SIZE_0 > 1) || (FORK_KERNEL_SIZE_1 > 1)
         FORK_KERNEL_SIZE_0,

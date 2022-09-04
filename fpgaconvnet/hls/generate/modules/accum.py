@@ -1,18 +1,11 @@
 accum_template = """
 {indent}accum<
-#if {NAME}_BATCH_SIZE*{NAME}_ROWS*{NAME}_COLS*{NAME}_GROUPS > 1
 {indent}    {NAME}_BATCH_SIZE,
 {indent}    {NAME}_ROWS,
 {indent}    {NAME}_COLS,
-#endif
 {indent}    {NAME}_CHANNELS,
 {indent}    {NAME}_FILTERS,
-#if {NAME}_FILTERS_PER_GROUP > 1
-{indent}    {NAME}_FILTERS_PER_GROUP,
-#endif
-#if {NAME}_BATCH_SIZE*{NAME}_ROWS*{NAME}_COLS*{NAME}_GROUPS > 1
 {indent}    {NAME}_GROUPS,
-#endif
 {indent}    {accum_t}
 {indent}>({input_stream},{output_stream});
 """

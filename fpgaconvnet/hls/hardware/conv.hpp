@@ -80,7 +80,8 @@ void conv_intr(
     conv_data_t window_cache[kernel_size_x][kernel_size_y];
     #pragma HLS ARRAY_PARTITION variable=window_cache complete dim=0
     #pragma HLS dependence variable=window_cache intra RAW true
-    DO_PRAGMA( HLS dependence variable=window_cache inter WAW true distance=batch_size*rows*cols*channels )
+    #pragma HLS dependence variable=window_cache inter WAW false
+    /* DO_PRAGMA( HLS dependence variable=window_cache inter WAW true distance=batch_size*rows*cols*channels ) */
 
     // loops
     auto loops = hlslib::ConstFlatten<
@@ -91,7 +92,6 @@ void conv_intr(
 
     // extra indices
     unsigned int weight_index = 0;
-    unsigned char fine_index = 0;
 
     pixel_channel_filter_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
 
@@ -101,6 +101,7 @@ void conv_intr(
         // loop indices
         auto channel_index = loops[1];
         auto filter_index = loops[2];
+        unsigned char fine_index = 0;
 
         // perform the interleaving
         intr_k2_loop: for(unsigned char k2=0; k2 < kernel_size_y; k2++) {

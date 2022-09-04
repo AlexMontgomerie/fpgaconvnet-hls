@@ -14,9 +14,7 @@ void bias_top(
         BIAS_BATCH_SIZE,
         BIAS_ROWS,
         BIAS_COLS,
-#if BIAS_FILTERS > 1
         BIAS_FILTERS,
-#endif
         bias_data_t,
         bias_biases_t
     >(in,biases,out);

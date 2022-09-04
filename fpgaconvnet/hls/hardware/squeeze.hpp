@@ -76,17 +76,6 @@ void squeeze_in(
 
     }
 
-    /* dim_in_loop: for (unsigned int pixel_index = 0; pixel_index < batch_size*rows*cols; pixel_index++) { */
-    /*     unsigned int cache_index = 0; */
-    /*     channel_in_loop: for (unsigned int channel_index = 0; channel_index < DIVIDE(channels,coarse); channel_index++) { */
-    /*         #pragma HLS loop_flatten */
-    /*         #pragma HLS pipeline II=1 rewind */
-    /*         for (unsigned int in_index = 0; in_index < coarse; in_index++) { */
-    /*             out[cache_index].write(in[in_index].read()); */
-    /*             cache_index++; */
-    /*         } */
-    /*     } */
-    /* } */
 }
 
 /**
@@ -137,7 +126,7 @@ void squeeze_out(
 
         // write to intermediate output stream
         for (unsigned int out_index = 0; out_index < coarse; out_index++) {
-            out[out_index].write(in[cache_index+in_index].read());
+            out[out_index].write(in[cache_index+out_index].read());
         }
 
         // cache index logic
@@ -145,17 +134,6 @@ void squeeze_out(
 
     }
 
-    /* dim_out_loop: for (unsigned int pixel_index = 0; pixel_index < batch_size*rows*cols; pixel_index++) { */
-    /*     unsigned int cache_index = 0; */
-    /*     channel_out_loop: for (unsigned int channel_index = 0; channel_index < DIVIDE(channels,coarse); channel_index++) { */
-    /*         #pragma HLS loop_flatten */
-    /*         #pragma HLS pipeline II=1 rewind */
-    /*         for (unsigned int out_index = 0; out_index < coarse; out_index++) { */
-    /*             out[out_index].write(in[cache_index].read()); */
-    /*             cache_index++; */
-    /*         } */
-    /*     } */
-    /* } */
 }
 
 

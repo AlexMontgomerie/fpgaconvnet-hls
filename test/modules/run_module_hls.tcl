@@ -3,6 +3,7 @@ source ../../../fpgaconvnet/hls/scripts/hls/tcl_getopt.tcl
 
 # get fpgaconvnet root folder
 set fpgaconvnet_hardware_path ../../../fpgaconvnet/hls/hardware
+set hlslib_path ../../../hlslib/include
 
 # get input arguments
 set hls_arg [ lindex $argv 2 ]
@@ -41,8 +42,8 @@ open_project -reset ${name}_hls_prj
 set_top ${name}_top
 
 # compiler flags
-set compiler_flags "-Wtautological-compare -Wno-parentheses-equality -std=c++11 \
-    -I../../../src -I../../../include -I${fpgaconvnet_hardware_path} -I./tb"
+set compiler_flags "-std=c++11 -fexceptions -I../../../src -I../../../include\
+   -I${hlslib_path} -I${fpgaconvnet_hardware_path} -I./tb"
 
 # add files
 add_files ./src/${name}.cpp -cflags "${compiler_flags}"
@@ -69,7 +70,7 @@ if { $test_type == "sim" } {
 
 } elseif { $test_type == "synth" } {
 
-    csim_design
+    # csim_design
     csynth_design
     exit
 

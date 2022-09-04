@@ -45,6 +45,8 @@ void pool(
     const unsigned int rows         = ROWS;
     const unsigned int cols         = COLS;
     const unsigned int channels     = CHANNELS;
+    const unsigned int kernel_size_x = KERNEL_SIZE_X;
+    const unsigned int kernel_size_y = KERNEL_SIZE_Y;
 
 #pragma HLS STREAM variable=in
 #pragma HLS STREAM variable=out

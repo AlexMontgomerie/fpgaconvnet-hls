@@ -30,7 +30,6 @@ template<
     unsigned int COLS,
     unsigned int CHANNELS,
     unsigned int FILTERS,
-    unsigned int FILTERS_PER_GROUP,
     unsigned int GROUPS,
     typename accum_t
 >
@@ -76,7 +75,6 @@ template<
     unsigned int COLS,
     unsigned int CHANNELS,
     unsigned int FILTERS,
-    unsigned int FILTERS_PER_GROUP,
     unsigned int GROUPS,
     typename accum_t
 >
@@ -136,7 +134,6 @@ template<
     unsigned int COLS,
     unsigned int CHANNELS,
     unsigned int FILTERS,
-    unsigned int FILTERS_PER_GROUP,
     unsigned int GROUPS,
     typename accum_t
 >
@@ -174,7 +171,6 @@ void accum(
         COLS,
         CHANNELS,
         FILTERS,
-        FILTERS_PER_GROUP,
         GROUPS,
         accum_t
     >(in, reorder);
@@ -185,7 +181,6 @@ void accum(
         COLS,
         CHANNELS,
         FILTERS,
-        FILTERS_PER_GROUP,
         GROUPS,
         accum_t
     >(reorder, out);
