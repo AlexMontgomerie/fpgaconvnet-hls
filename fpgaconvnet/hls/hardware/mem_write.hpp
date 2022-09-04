@@ -59,24 +59,38 @@ void mem_write(
 #pragma HLS STREAM variable=out depth=256
 #pragma HLS ARRAY_PARTITION variable=out complete dim=0
 
-    pixel_loop: for(unsigned pixel_index=0;pixel_index<batch_size*rows*cols;pixel_index++) {
-        channel_loop: for(unsigned channel_index=0;channel_index<channels_per_stream;channel_index++) {
-            #pragma HLS PIPELINE II=1
-            mem_int port_cache[ports] = {0};
-            #pragma HLS dependence variable=port_cache intra RAW true
-            streams_loop: for(unsigned stream_index=0; stream_index<streams; stream_index++) {
-                type_t stream_cache = out[stream_index].read();
-                unsigned int port_index = (int) (stream_index/dma_channels);
-                port_cache[port_index] |= ( ( stream_cache.range() & bit_mask ) <<
-                        ( ( stream_index%dma_channels ) * data_width ) );
-            }
-            port_write_loop: for (unsigned port_index=0; port_index < ports; port_index++) {
-                int out_index = pixel_index*channels_per_stream*weights_reloading_factor +
-                    weights_reloading_index*channels_per_stream + channel_index;
-                out_hw[port_index][out_index] = port_cache[port_index];
-            }
+    // loops
+    auto loops = hlslib::ConstFlatten<
+        0, batch_size*rows*cols, 1, // pixel loop
+        0, channels_per_stream, 1 // channel loop
+    >();
+
+    pixel_channel_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
+
+        #pragma HLS PIPELINE II=1
+
+        mem_int port_cache[ports] = {0};
+        #pragma HLS dependence variable=port_cache intra RAW true
+
+        // loop indices
+        auto pixel_index = loops[0];
+        auto channel_index = loops[1];
+
+        streams_loop: for(unsigned stream_index=0; stream_index<streams; stream_index++) {
+            type_t stream_cache = out[stream_index].read();
+            unsigned int port_index = (int) (stream_index/dma_channels);
+            port_cache[port_index] |= ( ( stream_cache.range() & bit_mask ) <<
+                    ( ( stream_index%dma_channels ) * data_width ) );
         }
+
+        port_write_loop: for (unsigned port_index=0; port_index < ports; port_index++) {
+            int out_index = pixel_index*channels_per_stream*weights_reloading_factor +
+                weights_reloading_index*channels_per_stream + channel_index;
+            out_hw[port_index][out_index] = port_cache[port_index];
+        }
+
     }
+
 }
 
 #endif

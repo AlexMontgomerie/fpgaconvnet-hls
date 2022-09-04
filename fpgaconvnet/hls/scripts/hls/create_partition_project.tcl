@@ -15,7 +15,8 @@ getopt $hls_arg -clk    clk_period      "5"
 puts "project: ${project_path}"
 
 # default cflags
-set default_cflags "-std=c++11 -I${project_path}/include -I${project_path}/data -I${fpgaconvnet_root}/hardware"
+set default_cflags "-std=c++11 -fexceptions -I${project_path}/include -I${project_path}/data \
+    -I${fpgaconvnet_root}/hardware -I${fpgaconvnet_root}/hardware/hlslib/include"
 
 # create open project
 open_project ${project_path}

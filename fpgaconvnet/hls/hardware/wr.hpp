@@ -53,7 +53,7 @@ void weights_reloading(
     auto loops = hlslib::ConstFlatten<
         0, coarse_in*coarse_group, 1, // coarse in loop
         0, coarse_out, 1, // coarse out loop
-        0, filters_per_group, 1, // filter loop
+        0, filters, 1, // filter loop
         0, kernel_size_x, 1, // k1 loop
         0, kernel_size_y, 1 // k1 loop
     >();

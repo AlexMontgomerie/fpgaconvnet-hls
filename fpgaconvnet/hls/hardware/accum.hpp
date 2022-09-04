@@ -60,7 +60,6 @@ void accum_reorder(
         #pragma HLS pipeline II=1 rewind
         auto filter_index = loops[1];
         out[filter_index].write( in.read() );
-
     }
 
  }
