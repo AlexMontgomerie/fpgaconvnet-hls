@@ -131,6 +131,7 @@ def gen_pooling_layer(name,param,src_path,header_path):
         name+"_sliding_window",
         "in",
         "out",
+        param["kernel_size"],
         sliding_window_t=f"{name}_data_t",
         indent=4
     )
