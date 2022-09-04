@@ -25,13 +25,13 @@
  */
 
 template<
-unsigned int FILTERS,
-unsigned int COARSE_IN,
-unsigned int COARSE_OUT,
-unsigned int COARSE_GROUP,
-unsigned int KERNEL_SIZE_X,
-unsigned int KERNEL_SIZE_Y,
-typename weight_t
+    unsigned int FILTERS,
+    unsigned int COARSE_IN,
+    unsigned int COARSE_OUT,
+    unsigned int COARSE_GROUP,
+    unsigned int KERNEL_SIZE_X,
+    unsigned int KERNEL_SIZE_Y,
+    typename weight_t
 >
 void weights_reloading(
     stream_t(weight_t) &in,
@@ -45,7 +45,7 @@ void weights_reloading(
     const unsigned int coarse_in     = COARSE_IN;
     const unsigned int coarse_out    = COARSE_OUT;
     const unsigned int coarse_group  = COARSE_GROUP;
-    const unsigned int filters       = DIVIDE(FILTERS,COARSE_IN*COARSE_GROUP*COARSE_OUT*KERNEL_SIZE_X*KERNEL_SIZE_Y);
+    const unsigned int filters       = DIVIDE(FILTERS, COARSE_IN*COARSE_GROUP*COARSE_OUT*KERNEL_SIZE_X*KERNEL_SIZE_Y);
     const unsigned int kernel_size_x = KERNEL_SIZE_X;
     const unsigned int kernel_size_y = KERNEL_SIZE_Y;
 

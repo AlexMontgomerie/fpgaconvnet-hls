@@ -218,10 +218,12 @@ void sliding_window_out(
 #pragma HLS INLINE OFF
 
     #pragma HLS STREAM variable=frame_buffer
-    #pragma HLS ARRAY_PARTITION variable=frame_buffer complete dim=0
+    #pragma HLS ARRAY_PARTITION variable=frame_buffer complete dim=1
+    #pragma HLS ARRAY_PARTITION variable=frame_buffer complete dim=2
 
     #pragma HLS STREAM variable=out
-    #pragma HLS ARRAY_PARTITION variable=out complete dim=0
+    #pragma HLS ARRAY_PARTITION variable=out complete dim=1
+    #pragma HLS ARRAY_PARTITION variable=out complete dim=2
 
     const unsigned int batch_size    = BATCH_SIZE;
     const unsigned int rows          = ROWS;
@@ -300,13 +302,14 @@ void sliding_window(
 
     #pragma HLS STREAM variable=in
     #pragma HLS STREAM variable=out
-    #pragma HLS ARRAY_PARTITION variable=out complete dim=0
+    #pragma HLS ARRAY_PARTITION variable=out complete dim=1
+    #pragma HLS ARRAY_PARTITION variable=out complete dim=2
 
     const unsigned int kernel_size_x = KERNEL_SIZE_X;
     const unsigned int kernel_size_y = KERNEL_SIZE_Y;
 
     stream_t(sliding_window_t) frame_buffer[kernel_size_x][kernel_size_y];
-    #pragma HLS STREAM variable=frame_buffer depth=10
+    #pragma HLS STREAM variable=frame_buffer
     #pragma HLS ARRAY_PARTITION variable=frame_buffer complete dim=0
 
     sliding_window_line_shift<
