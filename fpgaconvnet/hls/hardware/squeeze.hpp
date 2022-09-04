@@ -28,7 +28,6 @@ template<
     unsigned int ROWS,
     unsigned int COLS,
     unsigned int CHANNELS,
-    unsigned int CHANNELS_PER_COARSE,
     unsigned int COARSE,
     typename squeeze_t
 >
@@ -46,50 +45,7 @@ void squeeze_in(
     const unsigned int channels     = CHANNELS;
     const unsigned int coarse       = COARSE;
 
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    dim_in_loop: for (unsigned int pixel_index = 0; pixel_index < batch_size*rows*cols; pixel_index++) {
-        unsigned int cache_index = 0;
-        channel_in_loop: for (unsigned int channel_index = 0; channel_index < DIVIDE(channels,coarse); channel_index++) {
-            #pragma HLS loop_flatten
-            #pragma HLS pipeline II=1 rewind
-            for (unsigned int in_index = 0; in_index < coarse; in_index++) {
-                out[cache_index].write(in[in_index].read());
-                cache_index++;
-            }
-        }
-    }
-}
-
-/**
- *  squeeze in
- *  - single channel per coarse
- */
-template<
-    unsigned int BATCH_SIZE,
-    unsigned int ROWS,
-    unsigned int COLS,
-    unsigned int CHANNELS,
-    unsigned int COARSE,
-    typename squeeze_t
->
-void squeeze_in(
-    stream_t(squeeze_t) in[COARSE],
-    stream_t(squeeze_t) out[CHANNELS]
-)
-{
-
-#pragma HLS INLINE OFF
-
-    const unsigned int batch_size   = BATCH_SIZE;
-    const unsigned int rows         = ROWS;
-    const unsigned int cols         = COLS;
-    const unsigned int channels     = CHANNELS;
-    const unsigned int coarse       = COARSE;
+    const unsigned int channels_per_coarse = DIVIDE(channels, coarse);
 
 #pragma HLS STREAM variable=in
 #pragma HLS STREAM variable=out
@@ -97,138 +53,33 @@ void squeeze_in(
 #pragma HLS ARRAY_PARTITION variable=in complete dim=0
 #pragma HLS ARRAY_PARTITION variable=out complete dim=0
 
-    dim_in_loop: for (unsigned int pixel_index = 0; pixel_index < batch_size*rows*cols; pixel_index++) {
-        unsigned int cache_index = 0;
+    // loops
+    auto loops = hlslib::ConstFlatten<
+        0, batch_size*rows*cols, 1, // pixel loop
+        0, channels_per_coarse, 1 // channel loop
+    >();
+
+    unsigned int cache_index = 0;
+
+    pixel_channel_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
+
+        // pragma
         #pragma HLS pipeline II=1 rewind
+
+        // write to intermediate output stream
         for (unsigned int in_index = 0; in_index < coarse; in_index++) {
-            out[cache_index].write(in[in_index].read());
-            cache_index++;
+            out[cache_index+in_index].write(in[in_index].read());
         }
+
+        // cache index logic
+        cache_index = (cache_index + coarse) % channels;
+
     }
-}
 
-/**
- *  squeeze in
- *  - single iteration
- */
-template<
-    unsigned int CHANNELS,
-    unsigned int CHANNELS_PER_COARSE,
-    unsigned int COARSE,
-    typename squeeze_t
->
-void squeeze_in(
-    stream_t(squeeze_t) in[COARSE],
-    stream_t(squeeze_t) out[CHANNELS]
-)
-{
-
-#pragma HLS INLINE OFF
-
-    const unsigned int channels     = CHANNELS;
-    const unsigned int coarse       = COARSE;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    unsigned int cache_index = 0;
-    channel_in_loop: for (unsigned int channel_index = 0; channel_index < DIVIDE(channels,coarse); channel_index++) {
-        #pragma HLS loop_flatten
-        #pragma HLS pipeline II=1 rewind
-        for (unsigned int in_index = 0; in_index < coarse; in_index++) {
-            out[cache_index].write(in[in_index].read());
-            cache_index++;
-        }
-    }
-}
-
-/**
- *  squeeze in
- *  - single iteration
- *  - single channel per coarse
- */
-template<
-    unsigned int CHANNELS,
-    unsigned int COARSE,
-    typename squeeze_t
->
-void squeeze_in(
-    stream_t(squeeze_t) in[COARSE],
-    stream_t(squeeze_t) out[CHANNELS]
-)
-{
-
-#pragma HLS INLINE OFF
-
-    const unsigned int channels     = CHANNELS;
-    const unsigned int coarse       = COARSE;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    unsigned int cache_index = 0;
-
-    #pragma HLS unroll
-    for (unsigned int in_index = 0; in_index < coarse; in_index++) {
-        out[cache_index].write(in[in_index].read());
-        cache_index++;
-    }
 }
 
 /**
  *  squeeze out
- */
-template<
-    unsigned int BATCH_SIZE,
-    unsigned int ROWS,
-    unsigned int COLS,
-    unsigned int CHANNELS,
-    unsigned int CHANNELS_PER_COARSE,
-    unsigned int COARSE,
-    typename squeeze_t
->
-void squeeze_out(
-    stream_t(squeeze_t) in[CHANNELS],
-    stream_t(squeeze_t) out[COARSE]
-)
-{
-
-#pragma HLS INLINE OFF
-
-    const unsigned int batch_size   = BATCH_SIZE;
-    const unsigned int rows         = ROWS;
-    const unsigned int cols         = COLS;
-    const unsigned int channels     = CHANNELS;
-    const unsigned int coarse       = COARSE;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    dim_out_loop: for (unsigned int pixel_index = 0; pixel_index < batch_size*rows*cols; pixel_index++) {
-        unsigned int cache_index = 0;
-        channel_out_loop: for (unsigned int channel_index = 0; channel_index < DIVIDE(channels,coarse); channel_index++) {
-            #pragma HLS loop_flatten
-            #pragma HLS pipeline II=1 rewind
-            for (unsigned int out_index = 0; out_index < coarse; out_index++) {
-                out[out_index].write(in[cache_index].read());
-                cache_index++;
-            }
-        }
-    }
-}
-
-/**
- *  squeeze out
- *  - single channel per coarse
  */
 template<
     unsigned int BATCH_SIZE,
@@ -252,42 +103,7 @@ void squeeze_out(
     const unsigned int channels     = CHANNELS;
     const unsigned int coarse       = COARSE;
 
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    dim_out_loop: for (unsigned int pixel_index = 0; pixel_index < batch_size*rows*cols; pixel_index++) {
-        unsigned int cache_index = 0;
-        #pragma HLS pipeline II=1 rewind
-        for (unsigned int out_index = 0; out_index < coarse; out_index++) {
-            out[out_index].write(in[cache_index].read());
-            cache_index++;
-        }
-    }
-}
-
-/**
- *  squeeze out
- *  - single iteration
- */
-template<
-    unsigned int CHANNELS,
-    unsigned int CHANNELS_PER_COARSE,
-    unsigned int COARSE,
-    typename squeeze_t
->
-void squeeze_out(
-    stream_t(squeeze_t) in[CHANNELS],
-    stream_t(squeeze_t) out[COARSE]
-)
-{
-
-#pragma HLS INLINE OFF
-
-    const unsigned int channels     = CHANNELS;
-    const unsigned int coarse       = COARSE;
+    const unsigned int channels_per_coarse = DIVIDE(channels, coarse);
 
 #pragma HLS STREAM variable=in
 #pragma HLS STREAM variable=out
@@ -295,52 +111,31 @@ void squeeze_out(
 #pragma HLS ARRAY_PARTITION variable=in complete dim=0
 #pragma HLS ARRAY_PARTITION variable=out complete dim=0
 
-    unsigned int cache_index = 0;
-    channel_out_loop: for (unsigned int channel_index = 0; channel_index < DIVIDE(channels,coarse); channel_index++) {
-        #pragma HLS pipeline II=1 rewind
-        for (unsigned int out_index = 0; out_index < coarse; out_index++) {
-            out[out_index].write(in[cache_index].read());
-            cache_index++;
-        }
-    }
-}
-
-/**
- *  squeeze out
- *  - single iteration
- *  - single channel per coarse
- */
-template<
-    unsigned int CHANNELS,
-    unsigned int COARSE,
-    typename squeeze_t
->
-void squeeze_out(
-    stream_t(squeeze_t) in[CHANNELS],
-    stream_t(squeeze_t) out[COARSE]
-)
-{
-
-#pragma HLS INLINE OFF
-
-    const unsigned int channels     = CHANNELS;
-    const unsigned int coarse       = COARSE;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-#pragma HLS unroll
+    // loops
+    auto loops = hlslib::ConstFlatten<
+        0, batch_size*rows*cols, 1, // pixel loop
+        0, channels_per_coarse, 1 // channel loop
+    >();
 
     unsigned int cache_index = 0;
 
-    for (unsigned int out_index = 0; out_index < coarse; out_index++) {
-        out[out_index].write(in[cache_index].read());
-        cache_index++;
+    pixel_channel_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
+
+        // pragma
+        #pragma HLS pipeline II=1 rewind
+
+        // write to intermediate output stream
+        for (unsigned int out_index = 0; out_index < coarse; out_index++) {
+            out[out_index].write(in[cache_index+out_index].read());
+        }
+
+        // cache index logic
+        cache_index = (cache_index + coarse) % channels;
+
     }
+
 }
+
 
 /**
  *  squeeze
@@ -350,386 +145,6 @@ template<
     unsigned int BATCH_SIZE,
     unsigned int ROWS,
     unsigned int COLS,
-    unsigned int CHANNELS,
-    unsigned int COARSE_IN,
-    unsigned int COARSE_OUT,
-    unsigned int CHANNELS_PER_COARSE_IN,
-    unsigned int CHANNELS_PER_COARSE_IN_DUP,
-    unsigned int CHANNELS_PER_COARSE_OUT,
-    typename squeeze_t
->
-void squeeze_spatial(
-    stream_t(squeeze_t) in[COARSE_IN],
-    stream_t(squeeze_t) out[COARSE_OUT]
-)
-{
-
-#pragma HLS INLINE OFF
-#pragma HLS DATAFLOW
-
-    const unsigned int channels = CHANNELS;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    stream_t(squeeze_t)  cache[channels];
-#pragma HLS STREAM variable=cache
-#pragma HLS ARRAY_PARTITION variable=cache complete dim=0
-
-    squeeze_in<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        CHANNELS_PER_COARSE_IN,
-        COARSE_IN,
-        squeeze_t
-    >(in, cache);
-
-    squeeze_out<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        CHANNELS_PER_COARSE_OUT,
-        COARSE_OUT,
-        squeeze_t
-    >(cache, out);
-
-}
-
-/**
- *  squeeze
- *  - single channel per coarse in
- */
-
-template<
-    unsigned int BATCH_SIZE,
-    unsigned int ROWS,
-    unsigned int COLS,
-    unsigned int CHANNELS,
-    unsigned int COARSE_IN,
-    unsigned int COARSE_OUT,
-    unsigned int CHANNELS_PER_COARSE_OUT,
-    typename squeeze_t
->
-void squeeze_spatial(
-    stream_t(squeeze_t) in[COARSE_IN],
-    stream_t(squeeze_t) out[COARSE_OUT]
-)
-{
-
-#pragma HLS INLINE OFF
-#pragma HLS DATAFLOW
-
-    const unsigned int channels = CHANNELS;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    stream_t(squeeze_t)  cache[channels];
-#pragma HLS STREAM variable=cache
-#pragma HLS ARRAY_PARTITION variable=cache complete dim=0
-
-    squeeze_in<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        COARSE_IN,
-        squeeze_t
-    >(in, cache);
-
-    squeeze_out<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        CHANNELS_PER_COARSE_OUT,
-        COARSE_OUT,
-        squeeze_t
-    >(cache, out);
-
-}
-
-/**
- *  squeeze
- *  - single channel per coarse out
- */
-
-template<
-    unsigned int BATCH_SIZE,
-    unsigned int ROWS,
-    unsigned int COLS,
-    unsigned int CHANNELS,
-    unsigned int COARSE_IN,
-    unsigned int COARSE_OUT,
-    unsigned int CHANNELS_PER_COARSE_IN,
-    unsigned int CHANNELS_PER_COARSE_IN_DUP,
-    typename squeeze_t
->
-void squeeze_spatial(
-    stream_t(squeeze_t) in[COARSE_IN],
-    stream_t(squeeze_t) out[COARSE_OUT]
-)
-{
-
-#pragma HLS INLINE OFF
-#pragma HLS DATAFLOW
-
-    const unsigned int channels = CHANNELS;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    stream_t(squeeze_t)  cache[channels];
-#pragma HLS STREAM variable=cache
-#pragma HLS ARRAY_PARTITION variable=cache complete dim=0
-
-    squeeze_in<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        CHANNELS_PER_COARSE_IN,
-        COARSE_IN,
-        squeeze_t
-    >(in, cache);
-
-    squeeze_out<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        COARSE_OUT,
-        squeeze_t
-    >(cache, out);
-
-}
-
-/**
- *  squeeze
- *  - single channel per coarse in
- *  - single channel per coarse out
- */
-
-template<
-    unsigned int BATCH_SIZE,
-    unsigned int ROWS,
-    unsigned int COLS,
-    unsigned int CHANNELS,
-    unsigned int COARSE_IN,
-    unsigned int COARSE_OUT,
-    typename squeeze_t
->
-void squeeze_spatial(
-    stream_t(squeeze_t) in[COARSE_IN],
-    stream_t(squeeze_t) out[COARSE_OUT]
-)
-{
-
-#pragma HLS INLINE OFF
-#pragma HLS DATAFLOW
-
-    const unsigned int channels = CHANNELS;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    stream_t(squeeze_t)  cache[channels];
-#pragma HLS STREAM variable=cache
-#pragma HLS ARRAY_PARTITION variable=cache complete dim=0
-
-    squeeze_in<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        COARSE_IN,
-        squeeze_t
-    >(in, cache);
-
-    squeeze_out<
-        BATCH_SIZE,
-        ROWS,
-        COLS,
-        CHANNELS,
-        COARSE_OUT,
-        squeeze_t
-    >(cache, out);
-
-}
-
-/**
- *  squeeze
- *  - single iteration
- */
-
-template<
-    unsigned int CHANNELS,
-    unsigned int COARSE_IN,
-    unsigned int COARSE_OUT,
-    unsigned int CHANNELS_PER_COARSE_IN,
-    unsigned int CHANNELS_PER_COARSE_IN_DUP,
-    unsigned int CHANNELS_PER_COARSE_OUT,
-    typename squeeze_t
->
-void squeeze(
-    stream_t(squeeze_t) in[COARSE_IN],
-    stream_t(squeeze_t) out[COARSE_OUT]
-)
-{
-
-#pragma HLS INLINE OFF
-#pragma HLS DATAFLOW
-
-    const unsigned int channels = CHANNELS;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    stream_t(squeeze_t)  cache[channels];
-#pragma HLS STREAM variable=cache
-#pragma HLS ARRAY_PARTITION variable=cache complete dim=0
-
-    squeeze_in<
-        CHANNELS,
-        CHANNELS_PER_COARSE_IN,
-        COARSE_IN,
-        squeeze_t
-    >(in, cache);
-
-    squeeze_out<
-        CHANNELS,
-        CHANNELS_PER_COARSE_OUT,
-        COARSE_OUT,
-        squeeze_t
-    >(cache, out);
-
-}
-
-/**
- *  squeeze
- *  - single iteration
- *  - single channel per coarse in
- */
-
-template<
-    unsigned int CHANNELS,
-    unsigned int COARSE_IN,
-    unsigned int COARSE_OUT,
-    unsigned int CHANNELS_PER_COARSE_OUT,
-    typename squeeze_t
->
-void squeeze(
-    stream_t(squeeze_t) in[COARSE_IN],
-    stream_t(squeeze_t) out[COARSE_OUT]
-)
-{
-
-#pragma HLS INLINE OFF
-#pragma HLS DATAFLOW
-
-    const unsigned int channels = CHANNELS;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    stream_t(squeeze_t)  cache[channels];
-#pragma HLS STREAM variable=cache
-#pragma HLS ARRAY_PARTITION variable=cache complete dim=0
-
-    squeeze_in<
-        CHANNELS,
-        COARSE_IN,
-        squeeze_t
-    >(in, cache);
-
-    squeeze_out<
-        CHANNELS,
-        CHANNELS_PER_COARSE_OUT,
-        COARSE_OUT,
-        squeeze_t
-    >(cache, out);
-
-}
-
-/**
- *  squeeze
- *  - single iteration
- *  - single channel per coarse out
- */
-
-template<
-    unsigned int CHANNELS,
-    unsigned int COARSE_IN,
-    unsigned int COARSE_OUT,
-    unsigned int CHANNELS_PER_COARSE_IN,
-    unsigned int CHANNELS_PER_COARSE_IN_DUP,
-    typename squeeze_t
->
-void squeeze(
-    stream_t(squeeze_t) in[COARSE_IN],
-    stream_t(squeeze_t) out[COARSE_OUT]
-)
-{
-
-#pragma HLS INLINE OFF
-#pragma HLS DATAFLOW
-
-    const unsigned int channels = CHANNELS;
-
-#pragma HLS STREAM variable=in
-#pragma HLS STREAM variable=out
-
-#pragma HLS ARRAY_PARTITION variable=in complete dim=0
-#pragma HLS ARRAY_PARTITION variable=out complete dim=0
-
-    stream_t(squeeze_t)  cache[channels];
-#pragma HLS STREAM variable=cache
-#pragma HLS ARRAY_PARTITION variable=cache complete dim=0
-
-    squeeze_in<
-        CHANNELS,
-        CHANNELS_PER_COARSE_IN,
-        COARSE_IN,
-        squeeze_t
-    >(in, cache);
-
-    squeeze_out<
-        CHANNELS,
-        COARSE_OUT,
-        squeeze_t
-    >(cache, out);
-
-}
-
-/**
- *  squeeze
- *  - single iteration
- *  - single channel per coarse in
- *  - single channel per coarse out
- */
-
-template<
     unsigned int CHANNELS,
     unsigned int COARSE_IN,
     unsigned int COARSE_OUT,
@@ -757,16 +172,23 @@ void squeeze(
 #pragma HLS ARRAY_PARTITION variable=cache complete dim=0
 
     squeeze_in<
+        BATCH_SIZE,
+        ROWS,
+        COLS,
         CHANNELS,
         COARSE_IN,
         squeeze_t
     >(in, cache);
 
     squeeze_out<
+        BATCH_SIZE,
+        ROWS,
+        COLS,
         CHANNELS,
         COARSE_OUT,
         squeeze_t
     >(cache, out);
 
 }
+
 #endif

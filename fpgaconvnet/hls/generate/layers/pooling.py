@@ -129,9 +129,7 @@ def gen_pooling_layer(name,param,src_path,header_path):
     # SLIDING WINDOW MODULE INIT
     sliding_window = generate_sliding_window.gen_sliding_window_module(
         name+"_sliding_window",
-        "in",
-        "out",
-        param["kernel_size"],
+        "in", "out",
         sliding_window_t=f"{name}_data_t",
         indent=4
     )

@@ -12,22 +12,12 @@ void conv_top(
 #pragma HLS RESOURCE variable=weights core=ROM_2P_BRAM
 
     conv<
-#if CONV_BATCH_SIZE*CONV_ROWS*CONV_COLS > 1
         CONV_BATCH_SIZE,
         CONV_ROWS,
         CONV_COLS,
-#endif
         CONV_CHANNELS,
-#if CONV_FILTERS > 1
         CONV_FILTERS,
-#endif
         CONV_GROUPS,
-#if CONV_CHANNELS_PER_GROUP > 1
-        CONV_CHANNELS_PER_GROUP,
-#endif
-#if CONV_FILTERS > 1
-        CONV_FILTERS_PER_GROUP,
-#endif
 #if (CONV_KERNEL_SIZE_0 > 1) || (CONV_KERNEL_SIZE_1 > 1)
         CONV_FINE,
         CONV_KERNEL_SIZE_0,
@@ -36,9 +26,6 @@ void conv_top(
         conv_data_t,
         conv_weight_t,
         conv_acc_t
-#if (CONV_FILTERS == 1) && (CONV_CHANNELS_PER_GROUP == 1)
-        , conv_acc_t
-#endif
 #if (CONV_KERNEL_SIZE_0 == 1) && (CONV_KERNEL_SIZE_1 == 1)
     >(in[0][0],weights,out);
 #else

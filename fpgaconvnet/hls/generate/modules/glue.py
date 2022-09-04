@@ -1,11 +1,9 @@
 glue_template="""
 {indent}glue<
-#if {NAME}_BATCH_SIZE*{NAME}_ROWS*{NAME}_COLS*{NAME}_FILTERS_PER_COARSE > 1
 {indent}    {NAME}_BATCH_SIZE,
 {indent}    {NAME}_ROWS,
 {indent}    {NAME}_COLS,
 {indent}    {NAME}_FILTERS,
-#endif
 {indent}    {NAME}_COARSE_IN,
 {indent}    {NAME}_COARSE_OUT,
 {indent}    {NAME}_COARSE_GROUP,

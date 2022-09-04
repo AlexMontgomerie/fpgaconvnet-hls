@@ -313,7 +313,6 @@ def gen_convolution_layer(name, param, src_path, header_path):
     sliding_window = generate_sliding_window.gen_sliding_window_module(
         name+"_sliding_window",
         "in", "out",
-        param["kernel_size"],
         sliding_window_t=f"{name}_input_t",
         indent=4
     )

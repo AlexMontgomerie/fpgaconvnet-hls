@@ -3,9 +3,7 @@ bias_template="""
 {indent}    {NAME}_BATCH_SIZE,
 {indent}    {NAME}_ROWS,
 {indent}    {NAME}_COLS,
-#if {NAME}_FILTERS > 1
 {indent}    {NAME}_FILTERS,
-#endif
 {indent}    {data_t},
 {indent}    {biases_t}
 {indent}>({input_stream},{biases},{output_stream});

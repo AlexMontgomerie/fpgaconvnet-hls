@@ -42,8 +42,8 @@ open_project -reset ${name}_hls_prj
 set_top ${name}_layer_top
 
 # compiler flags
-set compiler_flags "-Wtautological-compare -Wno-parentheses-equality -std=c++11 \
-    -I../../../include -I${fpgaconvnet_hardware_path} -I./tb -I./include"
+set compiler_flags "-std=c++11 -fexceptions -I../../../src -I../../../include\
+   -I${fpgaconvnet_hardware_path} -I${fpgaconvnet_hardware_path}/hlslib/include -I./tb -I./include"
 
 # add files
 add_files ./src/${name}_layer.cpp -cflags "${compiler_flags}"
