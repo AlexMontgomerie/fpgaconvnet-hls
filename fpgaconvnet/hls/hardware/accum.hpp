@@ -57,7 +57,7 @@ void accum_reorder(
     >();
 
     pixel_filter_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
-        #pragma HLS pipeline II=1 rewind
+        #pragma HLS pipeline II=1
         auto filter_index = loops[1];
         out[filter_index].write( in.read() );
     }
@@ -67,7 +67,6 @@ void accum_reorder(
 /**
  *  accum accumulate
  */
-
 template<
     unsigned int BATCH_SIZE,
     unsigned int ROWS,
@@ -78,6 +77,117 @@ template<
     typename accum_t
 >
 void accum_accumulate(
+    stream_t(accum_t) in[DIVIDE(FILTERS,GROUPS)],
+    stream_t(accum_t) out[DIVIDE(FILTERS,GROUPS)]
+)
+{
+    #pragma HLS INLINE OFF
+
+    // get all constant parameters
+    const unsigned int batch_size = BATCH_SIZE;
+    const unsigned int rows       = ROWS;
+    const unsigned int cols       = COLS;
+    const unsigned int channels   = CHANNELS;
+    const unsigned int filters = FILTERS;
+    const unsigned int groups     = GROUPS;
+    const unsigned int channels_per_group = DIVIDE(channels, groups);
+    const unsigned int filters_per_group = DIVIDE(filters, groups);
+
+    // accumulation cache
+    accum_t acc[filters_per_group];
+    #pragma HLS array_partition variable=acc complete dim=0
+    #pragma HLS dependence variable=acc WAR intra false
+    #pragma HLS dependence variable=acc RAW intra true
+
+    // loops
+    auto loops = hlslib::ConstFlatten<
+        0, batch_size*rows*cols*groups, 1,
+        0, channels_per_group, 1
+    >();
+
+    pixel_filter_channel_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
+        #pragma HLS pipeline II=1
+
+        // loop indices
+        auto channel_index = loops[1];
+
+        for(int j=0; j < filters_per_group; j++) {
+            accum_t cache = in[j].read();
+            acc[j] = ( channel_index == 0 ) ? cache : accum_t(cache + acc[j]);
+            if( channel_index == (channels_per_group-1) ) {
+                out[j].write( acc[j] ) ;
+            }
+        }
+
+    }
+
+}
+
+/* template< */
+/*     unsigned int BATCH_SIZE, */
+/*     unsigned int ROWS, */
+/*     unsigned int COLS, */
+/*     unsigned int CHANNELS, */
+/*     unsigned int FILTERS, */
+/*     unsigned int GROUPS, */
+/*     typename accum_t */
+/* > */
+/* void accum_accumulate( */
+/*     stream_t(accum_t) in[DIVIDE(FILTERS,GROUPS)], */
+/*     stream_t(accum_t) &out */
+/* ) */
+/* { */
+/*     #pragma HLS INLINE OFF */
+
+/*     // get all constant parameters */
+/*     const unsigned int batch_size = BATCH_SIZE; */
+/*     const unsigned int rows       = ROWS; */
+/*     const unsigned int cols       = COLS; */
+/*     const unsigned int channels   = CHANNELS; */
+/*     const unsigned int filters    = FILTERS; */
+/*     const unsigned int groups     = GROUPS; */
+/*     const unsigned int channels_per_group = DIVIDE(channels,groups); */
+/*     const unsigned int filters_per_group = DIVIDE(filters,groups); */
+
+/*     // accumulation cache */
+/*     accum_t acc = 0; */
+/*     #pragma HLS dependence variable=acc WAR intra false */
+/*     #pragma HLS dependence variable=acc RAW intra true */
+
+/*     // loops */
+/*     auto loops = hlslib::ConstFlatten< */
+/*         0, batch_size*rows*cols*groups, 1, */
+/*         0, filters_per_group, 1, */
+/*         0, channels_per_group, 1 */
+/*     >(); */
+
+/*     pixel_filter_channel_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) { */
+/*         #pragma HLS pipeline II=1 */
+
+/*         // loop indices */
+/*         auto filter_index = loops[1]; */
+/*         auto channel_index = loops[2]; */
+
+/*         accum_t cache = in[filter_index].read(); */
+/*         acc = ( channel_index == 0 ) ? cache : accum_t(cache + acc); */
+/*         if( channel_index == (channels_per_group-1) ) { */
+/*             out.write( acc ) ; */
+/*         } */
+
+/*     } */
+
+/* } */
+
+template<
+    unsigned int BATCH_SIZE,
+    unsigned int ROWS,
+    unsigned int COLS,
+    unsigned int CHANNELS,
+    unsigned int FILTERS,
+    unsigned int GROUPS,
+    typename accum_t
+>
+void accum_interleave(
     stream_t(accum_t) in[DIVIDE(FILTERS, GROUPS)],
     stream_t(accum_t) &out
 )
@@ -94,34 +204,19 @@ void accum_accumulate(
     const unsigned int channels_per_group = DIVIDE(channels,groups);
     const unsigned int filters_per_group  = DIVIDE(filters ,groups);
 
-    // accumulation cache
-    accum_t acc = 0;
-    #pragma HLS dependence variable=acc WAR intra false
-    #pragma HLS dependence variable=acc RAW intra true
-
     // loops
     auto loops = hlslib::ConstFlatten<
-        0, batch_size*rows*cols*groups, 1,
-        0, filters_per_group, 1,
-        0, channels_per_group, 1
+        0, batch_size*rows*cols, 1, // pixel loop
+        0, filters_per_group, 1 // filter loop
     >();
 
-    pixel_filter_channel_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
-        #pragma HLS pipeline II=1 rewind
-
-        // loop indices
+    pixel_filter_loop: for (size_t i = 0; i < loops.size(); ++i, ++loops) {
+        #pragma HLS pipeline II=1
         auto filter_index = loops[1];
-        auto channel_index = loops[2];
-
-        accum_t cache = in[filter_index].read();
-        acc = ( channel_index == 0 ) ?  cache : accum_t(cache + acc);
-        if( channel_index == (channels_per_group-1) ) {
-            out.write( acc ) ;
-        }
-
+        out.write( in[filter_index].read() );
     }
 
-}
+ }
 
 /**
  *  accum
@@ -152,7 +247,7 @@ void accum(
     const unsigned int channels_per_group = DIVIDE(channels, groups);
 
     // pipeline depth (from synthesis)
-    const unsigned pipeline_depth = 10;
+    const unsigned pipeline_depth = 10000;
 
     #pragma HLS STREAM variable=in
     #pragma HLS STREAM variable=out
@@ -161,7 +256,16 @@ void accum(
     stream_t(accum_t) reorder[filters_per_group];
     #pragma HLS STREAM variable=reorder
     #pragma HLS array_partition variable=reorder complete dim=0
-    DO_PRAGMA(HLS STREAM variable=reorder depth=channels_per_group+pipeline_depth)
+    /* DO_PRAGMA(HLS STREAM variable=reorder depth=channels_per_group+pipeline_depth) */
+    DO_PRAGMA(HLS STREAM variable=reorder depth=pipeline_depth)
+
+    // re-ordered stream
+    stream_t(accum_t) interleave[filters_per_group];
+    #pragma HLS STREAM variable=interleave
+    #pragma HLS array_partition variable=interleave complete dim=0
+    /* DO_PRAGMA(HLS STREAM variable=interleave depth=channels_per_group+pipeline_depth) */
+    DO_PRAGMA(HLS STREAM variable=interleave depth=pipeline_depth)
+
 
     #pragma HLS DATAFLOW
     accum_reorder<
@@ -174,6 +278,16 @@ void accum(
         accum_t
     >(in, reorder);
 
+    /* accum_accumulate< */
+    /*     BATCH_SIZE, */
+    /*     ROWS, */
+    /*     COLS, */
+    /*     CHANNELS, */
+    /*     FILTERS, */
+    /*     GROUPS, */
+    /*     accum_t */
+    /* >(reorder, out); */
+
     accum_accumulate<
         BATCH_SIZE,
         ROWS,
@@ -182,7 +296,17 @@ void accum(
         FILTERS,
         GROUPS,
         accum_t
-    >(reorder, out);
+    >(reorder, interleave);
+
+    accum_interleave<
+        BATCH_SIZE,
+        ROWS,
+        COLS,
+        CHANNELS,
+        FILTERS,
+        GROUPS,
+        accum_t
+    >(interleave, out);
 
 }
 
