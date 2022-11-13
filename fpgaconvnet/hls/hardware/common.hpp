@@ -18,7 +18,6 @@
 #ifndef COMMON_HPP_
 #define COMMON_HPP_
 
-#include "system.hpp"
 #include <ap_fixed.h>
 #include "hls_stream.h"
 #include "hls_math.h"
@@ -27,6 +26,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+
+#ifdef SYSTEM_HPP_
+#include "system.hpp"
+#endif
 
 // hlslib imports
 #include "hlslib/xilinx/Flatten.h"
