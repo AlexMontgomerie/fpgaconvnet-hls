@@ -282,9 +282,9 @@ class GeneratePartition:
         network_tb_src = network_tb_src_template.format(
             name = self.name,
             NAME = self.name.upper(),
-            input_data_path = f"{self.partition.layers[0].name}_0.dat",
+            input_data_path = f"{self.partition.layers[0].name}_in_0.dat",
             weights_reloading_path = f"{self.partition.weights_reloading_layer}_weights_0.dat",
-            output_data_path = f"{self.partition.layers[-1].name}_0.dat"
+            output_data_path = f"{self.partition.layers[-1].name}_out_0.dat"
 
         )
 
@@ -307,7 +307,7 @@ class GeneratePartition:
         input_stream = np.moveaxis(input_stream, 1, -1)
         input_stream = onnx_data._convert_fixed_port_stream(input_stream.reshape(-1))
         onnx_data._fixed_point_stream_to_dat(input_stream,
-                os.path.join(self.output_path, f"data/{self.partition.layers[0].name}"),
+                os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_in"),
                 streams=int(self.partition.layers[0].parameters.coarse_in))
         # save output layer
         output_node = self.partition.output_node
@@ -315,7 +315,7 @@ class GeneratePartition:
         output_stream = np.moveaxis(output_stream, 1, -1)
         output_stream = onnx_data._convert_fixed_port_stream(output_stream.reshape(-1))
         onnx_data._fixed_point_stream_to_dat(output_stream,
-                os.path.join(self.output_path, f"data/{self.partition.layers[-1].name}"),
+                os.path.join(self.output_path, f"data/{self.partition.layers[-1].name}_out"),
                 streams=int(self.partition.layers[-1].parameters.coarse_out))
 
     """
