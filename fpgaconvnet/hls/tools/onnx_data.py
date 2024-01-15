@@ -261,6 +261,8 @@ def get_weights_inner_product(weights_raw, layer, wr_factor=1):
     return _transform_weights(weights_raw,wr_factor,coarse_in,coarse_out,1,1)
 
 def _transform_biases(biases_raw, filters, coarse_out, wr_factor=1):
+    #Ensure bias one-dimensionality
+    biases_raw = biases_raw.flatten('C')
     # parameters
     num_filters  = biases_raw.shape[0]//(coarse_out*wr_factor)
     biases = np.ndarray(
