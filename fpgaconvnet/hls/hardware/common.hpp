@@ -56,6 +56,7 @@ typedef unsigned long mem_int;
 typedef ap_axis<64,1,1,1> axi_stream_t;
 typedef hls::stream<axi_stream_t> axi_stream_hw_t;
 
+// <total_width, int_width, rounding type>
 typedef ap_fixed<16, 8,AP_RND> data_t;
 typedef ap_fixed<30,16,AP_RND> acc_t;
 typedef ap_fixed<16, 8,AP_RND> weight_t;

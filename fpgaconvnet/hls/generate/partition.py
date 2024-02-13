@@ -20,7 +20,8 @@ import fpgaconvnet.hls.tools.onnx_data as onnx_data
 from fpgaconvnet.hls.tools.array_init import array_init
 
 import fpgaconvnet.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
-import fpgaconvnet.tools.onnx_helper as onnx_helper
+from fpgaconvnet.parser import Parser
+import fpgaconvnet.parser.onnx.helper as onnx_helper
 import fpgaconvnet.tools.layer_enum as layer_enum
 
 class GeneratePartition:
@@ -81,6 +82,8 @@ class GeneratePartition:
         for layer in self.partition.layers:
             # get parameters of layer
             parameters = MessageToDict(layer.parameters, preserving_proto_field_name=True)
+            # FIXME adding buffer depth to params in a hacky way
+            parameters['buffer_depth'] = layer.streams_in[0].buffer_depth
             # init function arguments for this layer
             fn_args = []
             # init hardware generation args
@@ -156,10 +159,12 @@ class GeneratePartition:
                     with open(f'{output_path}_{weights_reloading_index}.csv', 'w') as f:
                         f.write(array_init(transformed_weights[weights_reloading_index]))
                 ## flatten weights into a stream
+                weight_int_width = layer.parameters.weight_t.width - \
+                    layer.parameters.weight_t.binary_point
                 weights_stream =  onnx_data._convert_fixed_port_stream(
                         transformed_weights.reshape(-1),
-                        total_width=layer.parameters.weight_width,
-                        int_width=layer.parameters.weight_width//2)
+                        total_width=layer.parameters.weight_t.width,
+                        int_width=weight_int_width)
                 ## save to .dat format
                 onnx_data._fixed_point_stream_to_dat(weights_stream, output_path=output_path,
                         streams=1, port_width=64, ports=1)
@@ -178,10 +183,13 @@ class GeneratePartition:
                     with open(f'{output_path}.csv', 'w') as f:
                         f.write(array_init(transformed_biases[0]))
                     ## flatten biases into a stream
+                    # FIXME check if bias width should be accum width or smth else
+                    acc_int_width = layer.parameters.acc_t.width - \
+                        layer.parameters.acc_t.binary_point
                     biases_stream = onnx_data._convert_fixed_port_stream(
                             transformed_biases.reshape(-1),
-                            total_width=layer.parameters.biases_width,
-                            int_width=layer.parameters.biases_width//2)
+                            total_width=layer.parameters.acc_t.width,
+                            int_width=acc_int_width)
                     ## save to .dat format
                     onnx_data._fixed_point_stream_to_dat(biases_stream, output_path=output_path,
                             streams=1, port_width=64, ports=1)
@@ -299,10 +307,15 @@ class GeneratePartition:
         # get the input name and shape
         input_name  = self.sess.get_inputs()[0].name
         input_shape = self.sess.get_inputs()[0].shape
-        # TODO: check data is right shape
+        # check data is right shape
+        if input_shape != list(input_data.shape):
+            raise ValueError(f"expected input shape: {input_shape}, data shape: {list(input_data.shape)}")
         # save input layer
         # TODO add bitwidth
-        input_node = self.partition.input_node
+        if len(self.partition.input_nodes) > 1:
+            # check if multiple input nodes
+            raise NotImplementedError("Multiple input nodes not currently supported.")
+        input_node = self.partition.input_nodes[0]
         input_stream = np.array( self.sess.run([input_node], { input_name : input_data } )[0] )
         input_stream = np.moveaxis(input_stream, 1, -1)
         input_stream = onnx_data._convert_fixed_port_stream(input_stream.reshape(-1))
@@ -310,7 +323,10 @@ class GeneratePartition:
                 os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_in"),
                 streams=int(self.partition.layers[0].parameters.coarse_in))
         # save output layer
-        output_node = self.partition.output_node
+        if len(self.partition.output_nodes) > 1:
+            # check if multiple output nodes
+            raise NotImplementedError("Multiple output nodes not currently supported.")
+        output_node = self.partition.output_nodes[0]
         output_stream = np.array( self.sess.run([output_node], { input_name : input_data } )[0] )
         output_stream = np.moveaxis(output_stream, 1, -1)
         output_stream = onnx_data._convert_fixed_port_stream(output_stream.reshape(-1))

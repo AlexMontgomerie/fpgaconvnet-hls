@@ -4,7 +4,8 @@ from google.protobuf import json_format
 import numpy as np
 
 import fpgaconvnet.proto.fpgaconvnet_pb2
-import fpgaconvnet.tools.onnx_helper as onnx_helper
+from fpgaconvnet.parser.Parser import Parser
+import fpgaconvnet.parser.onnx.helper as onnx_helper
 
 from fpgaconvnet.hls.generate.partition import GeneratePartition
 
@@ -37,50 +38,39 @@ class GenerateNetwork:
         with open(partition_path,'r') as f:
            json_format.Parse(f.read(), self.partitions)
 
-        # load onnx model
-        self.model = onnx_helper.load(model_path)
-        self.model = onnx_helper.update_batch_size(self.model, 1) # TODO
-        # self.model = onnx_helper.update_batch_size(self.model,self.partition.batch_size)
-
-        # remove biases
-        for partition in self.partitions.partition:
-            for layer in partition.layers:
-                if layer.bias_path:
-                    initializer = onnx_helper.get_model_initializer(self.model, layer.bias_path, to_tensor=False)
-                    # TODO: seems like theres no bias initializer for inner product layer
-                    if not initializer:
-                        continue
-                    zeroes = np.zeros(onnx.numpy_helper.to_array(initializer).shape).astype(np.float32)
-                    initializer_new = onnx.numpy_helper.from_array(zeroes,name=initializer.name)
-                    self.model.graph.initializer.remove(initializer)
-                    self.model.graph.initializer.extend([initializer_new])
+        # set up parser
+        self.parser = Parser(backend="hls", batch_size=self.partitions.partition[0].batch_size) # FIXME specify quant mode
+        # load network (parser onnx model)
+        self.net = self.parser.onnx_to_fpgaconvnet(model_path)
+        # load the existing partition information into the net object
+        self.net = self.parser.prototxt_to_fpgaconvnet(self.net,partition_path)
 
         # add intermediate layers to outputs
-        for node in self.model.graph.node:
+        for node in self.net.model.graph.node:
             layer_info = onnx.helper.ValueInfoProto()
             layer_info.name = node.output[0]
-            self.model.graph.output.append(layer_info)
+            self.net.model.graph.output.append(layer_info)
 
-        # add input aswell to output
+        # add input aswell to outpuexisting t
         layer_info = onnx.helper.ValueInfoProto()
-        layer_info.name = self.model.graph.input[0].name
-        self.model.graph.output.append(layer_info)
+        layer_info.name = self.net.model.graph.input[0].name
+        self.net.model.graph.output.append(layer_info)
 
         # remove input initializers
         name_to_input = {}
-        inputs = self.model.graph.input
+        inputs = self.net.model.graph.input
         for input in inputs:
             name_to_input[input.name] = input
-        for initializer in self.model.graph.initializer:
+        for initializer in self.net.model.graph.initializer:
             if initializer.name in name_to_input:
                 inputs.remove(name_to_input[initializer.name])
 
         # inference session
-        self.sess = onnxruntime.InferenceSession(self.model.SerializeToString())
+        self.sess = onnxruntime.InferenceSession(self.net.model.SerializeToString())
 
         # create generator for each partition
         self.partitions_generator = [ GeneratePartition(
-            self.name, partition, self.model, self.sess, f"partition_{i}") for \
+            self.name, partition, self.net.model, self.sess, f"partition_{i}") for \
                     i, partition in enumerate(self.partitions.partition) ]
 
         # flags

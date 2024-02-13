@@ -111,8 +111,8 @@ def gen_squeeze_layer(name,param,src_path,header_path):
         rows_out            =param['rows_out'],
         cols_out            =param['cols_out'],
         channels_out        =param['channels_out'],
-        data_width          =param['data_width'],
-        data_int_width      =param['data_width']//2,
+        data_width          =param['data_t']['width'],
+        data_int_width      =(param['data_t']['width']-param['data_t']['binary_point']),
         buffer_size         =lcm(param['coarse_in'],param['coarse_out']),
     )
 
