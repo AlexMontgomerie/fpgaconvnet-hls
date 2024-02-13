@@ -16,7 +16,8 @@ import onnx.numpy_helper
 
 import fpgaconvnet.tools.graphs as graphs
 import fpgaconvnet.tools.layer_enum as layer_enum
-import fpgaconvnet.tools.onnx_helper as onnx_helper
+from fpgaconvnet.parser import Parser
+import fpgaconvnet.parser.onnx.helper as onnx_helper
 import fpgaconvnet.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
 
 from fpgaconvnet.hls.tools.array_init import array_init
@@ -105,7 +106,7 @@ def _fixed_point_stream_format(stream, streams=1, port_width=64, ports=1):
     data_width = sum(stream[0].format)
     # check theres enough ports for the streams
     if streams > ports*(port_width/data_width):
-        raise ValueError
+        raise ValueError(f"Streams:{streams}, Ports:{ports}, PortWidth:{port_width}, DataWidth:{data_width}. Too many streams for p*(pw/dw): {ports*(port_width/data_width)}")
     # get port data type
     if   port_width == 8:
         port_type = np.uint8
