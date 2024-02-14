@@ -39,7 +39,8 @@ class GenerateNetwork:
            json_format.Parse(f.read(), self.partitions)
 
         # set up parser
-        self.parser = Parser(backend="hls", batch_size=self.partitions.partition[0].batch_size) # FIXME specify quant mode
+        print("FIXME: use HLS backend in Parser")
+        self.parser = Parser(backend="chisel", batch_size=self.partitions.partition[0].batch_size) # FIXME specify quant mode
         # load network (parser onnx model)
         self.net = self.parser.onnx_to_fpgaconvnet(model_path)
         # load the existing partition information into the net object
