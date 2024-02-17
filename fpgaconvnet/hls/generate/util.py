@@ -60,7 +60,7 @@ const static {self.name}_biases_t {self.name}_biases[{self.name.upper()}_COARSE_
     def generate_init(self):
         return f"""
 #pragma HLS ARRAY_PARTITION variable={self.name}_biases complete dim=1
-#pragma HLS RESOURCE variable={self.name}_biases core=ROM
+#pragma HLS RESOURCE variable={self.name}_biases core=ROM_nP
 #pragma HLS STABLE variable={self.name}_biases
         """
     def __repr__(self):

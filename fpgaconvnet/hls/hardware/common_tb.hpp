@@ -602,7 +602,7 @@ void load_net_data(
             for(int k=0;k<channels_per_stream;k++) {
                 // read in the value from the file
                 mem_int val;
-                fscanf(fp,"%ld\n", &val);
+                fscanf(fp,"%lu\n", &val);
                 // specific weights reloading index
                 if (j == wr_index) {
                     int out_index = i*channels_per_stream*WR_FACTOR + j*channels_per_stream + k;
