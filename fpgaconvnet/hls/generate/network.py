@@ -40,14 +40,23 @@ class GenerateNetwork:
 
         # set up parser
         print("FIXME: use HLS backend in Parser")
-        self.parser = Parser(backend="chisel", batch_size=self.partitions.partition[0].batch_size) # FIXME specify quant mode
+        self.parser = Parser(backend="chisel", batch_size=self.partitions.partition[0].batch_size) # FIXME for hls backend, resource model is missing
         # modify network to be supported by onnx
         model = onnx.load(model_path)
         nodes = model.graph.node
         for node in nodes:
             attrs = node.attribute
             for attr in attrs[:]:
-                if attr.name in ['weight_width','data_width','acc_width', 'block_floating_point']:
+                if attr.name == 'weight_width': 
+                    assert attr.i == 16, "weight_width must be 16"
+                    attrs.remove(attr)
+                elif attr.name == 'data_width':
+                    assert attr.i == 16, "data_width must be 16"
+                    attrs.remove(attr)
+                elif attr.name == 'acc_width':
+                    attrs.remove(attr)
+                elif attr.name == 'block_floating_point':
+                    assert attr.s == b'false', "block_floating_point must be false"
                     attrs.remove(attr)
         new_model_path = model_path.replace('.onnx','_new.onnx')
         onnx.save(model, new_model_path)
