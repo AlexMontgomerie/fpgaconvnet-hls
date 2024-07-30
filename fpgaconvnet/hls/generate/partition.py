@@ -26,13 +26,14 @@ import fpgaconvnet.tools.layer_enum as layer_enum
 
 class GeneratePartition:
 
-    def __init__(self, name, partition, model, sess, output_path):
+    def __init__(self, name, partition, model, sess, output_path, port_width=64):
 
         self.name = name
         self.partition = partition
         self.output_path = output_path
         self.model = model
         self.sess = sess
+        self.port_width = port_width
 
         # make output path directory
         self.mkdir(self.output_path)
@@ -166,8 +167,9 @@ class GeneratePartition:
                         total_width=layer.parameters.weight_t.width,
                         int_width=weight_int_width)
                 ## save to .dat format
+                print(f"Writing weights stream to .dat file")
                 onnx_data._fixed_point_stream_to_dat(weights_stream, output_path=output_path,
-                        streams=1, port_width=64, ports=1)
+                        streams=1, port_width=self.port_width, ports=1)
                 # add weight generators (if bias present)
                 if layer.parameters.has_bias == 1:
                     ## add a biases generator
@@ -191,8 +193,11 @@ class GeneratePartition:
                             total_width=layer.parameters.acc_t.width,
                             int_width=acc_int_width)
                     ## save to .dat format
+                    # onnx_data._fixed_point_stream_to_dat(biases_stream, output_path=output_path,
+                    #         streams=1, port_width=64, ports=1)
+                    print("Writing biases stream to .dat file")
                     onnx_data._fixed_point_stream_to_dat(biases_stream, output_path=output_path,
-                            streams=1, port_width=64, ports=1)
+                            streams=1, port_width=self.port_width, ports=1)
 
         # get weights definitions and intialisation
         self.weights_def = "\n\n".join([w.generate_def() for w in weights])
@@ -247,6 +252,10 @@ class GeneratePartition:
             WR_LAYER    =self.partition.weights_reloading_layer.upper(),
             wr_factor   =self.partition.weights_reloading_factor,
             wr_flag     =int(self.partition.weights_reloading_layer != "None"),
+            DMA_WIDTH   =self.port_width,
+            input_data_width=self.partition.layers[0].parameters.input_t.width,
+            weight_data_width=self.partition.layers[0].parameters.weight_t.width,
+            output_data_width=self.partition.layers[-1].parameters.data_t.width,
             include     =include
         )
 
@@ -319,9 +328,10 @@ class GeneratePartition:
         input_stream = np.array( self.sess.run([input_node], { input_name : input_data } )[0] )
         input_stream = np.moveaxis(input_stream, 1, -1)
         input_stream = onnx_data._convert_fixed_port_stream(input_stream.reshape(-1))
+        print("Writing input stream to .dat file")
         onnx_data._fixed_point_stream_to_dat(input_stream,
                 os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_in"),
-                streams=int(self.partition.layers[0].parameters.coarse_in))
+                streams=int(self.partition.layers[0].parameters.coarse_in), port_width=self.port_width)
         # save output layer
         if len(self.partition.output_nodes) > 1:
             # check if multiple output nodes
@@ -330,9 +340,10 @@ class GeneratePartition:
         output_stream = np.array( self.sess.run([output_node], { input_name : input_data } )[0] )
         output_stream = np.moveaxis(output_stream, 1, -1)
         output_stream = onnx_data._convert_fixed_port_stream(output_stream.reshape(-1))
+        print("Writing valid output stream to .dat file")
         onnx_data._fixed_point_stream_to_dat(output_stream,
                 os.path.join(self.output_path, f"data/{self.partition.layers[-1].name}_out"),
-                streams=int(self.partition.layers[-1].parameters.coarse_out))
+                streams=int(self.partition.layers[-1].parameters.coarse_out), port_width=self.port_width)
 
     """
     Vivado HLS functions
