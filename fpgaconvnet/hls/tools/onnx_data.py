@@ -105,6 +105,7 @@ def _fixed_point_stream_format(stream, streams=1, port_width=64, ports=1):
     # get width of fixed point data
     data_width = sum(stream[0].format)
     # check theres enough ports for the streams
+    print(f"Streams:{streams}, Ports:{ports}, PortWidth:{port_width}, DataWidth:{data_width}, Maximum stream number: {ports*(port_width/data_width)}, Number of elements = {stream.shape[0]}")
     if streams > ports*(port_width/data_width):
         raise ValueError(f"Streams:{streams}, Ports:{ports}, PortWidth:{port_width}, DataWidth:{data_width}. Too many streams for p*(pw/dw): {ports*(port_width/data_width)}")
     # get port data type
@@ -156,9 +157,55 @@ def _fixed_point_stream_to_bin(stream, output_path, streams=1, port_width=64, po
         bin_out[i].astype(port_type).tofile(f"{output_path}_{i}.bin".format(i=i))
 
 def _fixed_point_stream_to_dat(stream, output_path, streams=1, port_width=64, ports=1):
-    # get the formatted_stream
-    bin_out = _fixed_point_stream_format(stream, streams=streams, port_width=port_width, ports=ports)
-    # save to binary file
+    # check it's only a 1D array
+    assert len(stream.shape) == 1
+    # check the stream is fixed-point
+    # TODO
+    # get width of fixed point data
+    data_width = sum(stream[0].format)
+    # check theres enough ports for the streams
+    print(f"Streams:{streams}, Ports:{ports}, PortWidth:{port_width}, DataWidth:{data_width}, Maximum stream number: {ports*(port_width/data_width)}, Number of elements = {stream.shape[0]}")
+    if streams > ports*(port_width/data_width):
+        raise ValueError(f"Streams:{streams}, Ports:{ports}, PortWidth:{port_width}, DataWidth:{data_width}. Insufficient port_width, too many streams for p*(pw/dw): {ports*(port_width/data_width)}")
+    # get port data type
+    # if   port_width == 8:
+    #     port_type = np.uint8
+    # elif port_width == 16:
+    #     port_type = np.uint16
+    # elif port_width == 32:
+    #     port_type = np.uint32
+    # elif port_width == 64:
+    #     port_type = np.uint64
+    # else:
+    #     raise TypeError
+    if port_width not in [8, 16, 32, 64, 128, 256, 512]:
+        raise TypeError ("port_width must be 8, 16, 32, 64, 128, 256, or 512")
+    # get stream data type
+    if   0  < data_width <= 8:
+        data_type = np.uint8
+    elif 8  < data_width <= 16:
+        data_type = np.uint16
+    elif 16 < data_width <= 32:
+        data_type = np.uint32
+    elif 32 < data_width <= 64:
+        data_type = np.uint64
+    else:
+        raise TypeError ("data_width must be 8, 16, 32, or 64")
+    # check streams are a factor of the stream shape
+    if not stream.shape[0]%streams == 0:
+        raise ValueError
+    # get the size of the binary streas out, size is number of lines in .dat file
+    size = int(stream.shape[0]/streams)
+    # binary stream init
+    bin_out = np.zeros([ports,size], dtype=object)
+    # binary stream packing
+    for i in range(size):
+        for j in range(streams):
+            port_index = math.floor((j*data_width)/port_width) # streams*data_width/port_width has to be < 1
+            stream_val = int(data_type( stream[i*streams+j].bits_to_signed() & ((2**data_width)-1) ))
+            # bin_out[port_index][i] |= port_type( stream_val  << (data_width*j)%port_width )
+            bin_out[port_index][i] += int( stream_val  << (data_width*j)%port_width ) # replace |= for undetermined port width
+    # return the formatted stream
     for i in range(ports):
         with open(f"{output_path}_{i}.dat", 'w') as f:
             f.write("\n".join([str(j) for j in bin_out[i]]))
