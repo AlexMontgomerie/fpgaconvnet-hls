@@ -18,6 +18,7 @@
 #ifndef COMMON_HPP_
 #define COMMON_HPP_
 
+#include <ap_int.h>
 #include <ap_fixed.h>
 #include "hls_stream.h"
 #include "hls_math.h"
