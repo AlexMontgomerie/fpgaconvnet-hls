@@ -4,7 +4,7 @@
 #include "common.hpp"
 
 /**
- *  RECTIFIED LINEAR UNIT (RELU) FUNCTION
+ * ELEMENTWISE ADD FUNCTION
  */
 template<
     unsigned int BATCH_SIZE,
