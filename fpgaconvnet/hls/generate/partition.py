@@ -322,6 +322,11 @@ class GeneratePartition:
     Vivado HLS functions
     """
 
+    # Note: you must change all vivado_hls commands to vitis_hls to resolve the error (versions > 2019.2):
+    # vitis_hls: command not found 
+
+
+
     def create_vivado_hls_project(self, fpga_part="xc7z045ffg900-2", clk=5):
 
         # check everything is generated
