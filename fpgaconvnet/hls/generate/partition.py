@@ -9,11 +9,14 @@ from google.protobuf.json_format import MessageToDict
 
 from fpgaconvnet.hls.generate.partition_template import *
 
-from fpgaconvnet.hls.generate.layers.convolution    import gen_convolution_layer
-from fpgaconvnet.hls.generate.layers.pooling        import gen_pooling_layer
-from fpgaconvnet.hls.generate.layers.relu           import gen_relu_layer
-from fpgaconvnet.hls.generate.layers.inner_product  import gen_inner_product_layer
-from fpgaconvnet.hls.generate.layers.squeeze        import gen_squeeze_layer
+from fpgaconvnet.hls.generate.layers.convolution        import gen_convolution_layer
+from fpgaconvnet.hls.generate.layers.pooling            import gen_pooling_layer
+from fpgaconvnet.hls.generate.layers.relu               import gen_relu_layer
+from fpgaconvnet.hls.generate.layers.inner_product      import gen_inner_product_layer
+from fpgaconvnet.hls.generate.layers.squeeze            import gen_squeeze_layer
+from fpgaconvnet.hls.generate.layers.split              import gen_split_layer
+from fpgaconvnet.hls.generate.layers.elementwise_add    import gen_elementwise_add_layer
+from fpgaconvnet.hls.generate.layers.elementwise_mul    import gen_elementwise_mul_layer
 from fpgaconvnet.hls.generate.util import *
 
 import fpgaconvnet.hls.tools.onnx_data as onnx_data
@@ -115,6 +118,12 @@ class GeneratePartition:
                 gen_inner_product_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.SQUEEZE:
                 gen_squeeze_layer(*args)
+            if layer.type == fpgaconvnet_pb2.layer.layer_type.ELTWISE:
+                if layer.name.startswith("Add"):
+                    gen_elementwise_add_layer(*args)
+                elif layer.name.startswith("Mul"):
+                    gen_elementwise_mul_layer(*args)
+                else: raise ValueError("Operation type can only be Add or Mul")
             # create layer call
             for stream_in in layer.streams_in:
                 fn_args.append(stream_in.name)
