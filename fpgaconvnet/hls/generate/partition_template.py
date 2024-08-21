@@ -57,17 +57,17 @@ typedef {output_layer}_output_t {name}_output_t;
 #define {NAME}_WR_PORTS_IN      {NAME}_PORTS_WR
 #define {NAME}_WR_STREAMS_IN    {NAME}_STREAMS_WR
 
-#define {NAME}_DMA_WIDTH            {DMA_WIDTH}
-#define {NAME}_IN_DATA_WIDTH        {input_data_width}
-#define {NAME}_WEIGHTS_DATA_WIDTH   {weight_data_width}
-#define {NAME}_OUT_DATA_WIDTH       {output_data_width}
-
 void reload_weights(
     int weights_reloading_index,
     volatile mem_int wr_hw[{NAME}_PORTS_WR][{NAME}_SIZE_WR],
     {wr_layer}_weight_t weights[{NAME}_WR_COARSE_IN*{NAME}_WR_COARSE_GROUP][{NAME}_WR_COARSE_OUT][DIVIDE({NAME}_WR_WEIGHTS,{NAME}_WR_COARSE_IN*{NAME}_WR_COARSE_GROUP*{NAME}_WR_COARSE_OUT*{NAME}_WR_KERNEL_SIZE_X*{NAME}_WR_KERNEL_SIZE_Y)][{NAME}_WR_KERNEL_SIZE_X][{NAME}_WR_KERNEL_SIZE_Y]
 );
 #endif
+
+#define {NAME}_DMA_WIDTH            {DMA_WIDTH}
+#define {NAME}_IN_DATA_WIDTH        {input_data_width}
+#define {NAME}_WEIGHTS_DATA_WIDTH   {weight_data_width}
+#define {NAME}_OUT_DATA_WIDTH       {output_data_width}
 
 void process(
     int weights_reloading_index,
@@ -255,7 +255,6 @@ int main()
 
 #if {NAME}_WEIGHTS_RELOADING_FLAG
         static mem_int weights[{NAME}_PORTS_WR][{NAME}_SIZE_WR] = {{0}};
-#endif
 
         // load weights
         printf("LOADING WEIGHTS \\n");
@@ -264,6 +263,7 @@ int main()
             {NAME}_SIZE_WR,
             {NAME}_WEIGHTS_RELOADING_FACTOR
         >("{weights_reloading_path}", weights, wr_index);
+#endif
 
         // load valid output
         printf("LOADING VALID OUTPUT DATA \\n");
@@ -280,12 +280,18 @@ int main()
         printf("RUNNING NETWORK \\n");
 
         // perform weights reloading
+#if {NAME}_WEIGHTS_RELOADING_FLAG
         if( wr_index > 0 ) {{
             fpgaconvnet_ip(1,wr_index,weights,test_in,test_out);
         }}
+#endif   
 
         // run the network
+#if {NAME}_WEIGHTS_RELOADING_FLAG
         fpgaconvnet_ip(0,wr_index,weights,test_in,test_out);
+#else
+        fpgaconvnet_ip(0,wr_index,test_in,test_out);
+#endif
 
         // check array is correct
         for(int i=0; i<{NAME}_PORTS_OUT;i++) {{
