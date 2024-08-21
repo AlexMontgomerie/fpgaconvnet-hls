@@ -1,3 +1,4 @@
+# This script is out of date and yet to be updated
 import os
 import sys
 import json
