@@ -7,12 +7,12 @@ import copy
 sys.path.append('..')
 
 from fpgaconvnet.models.layers.PoolingLayer import PoolingLayer
-import fpgaconvnet.hls.generate.layers.pooling as pooling
+import fpgaconvnet.hls.generate.layers.avg_pooling as avg_pooling
 from Layer import Layer
 
-class PoolingLayerTB(Layer):
+class AvgPoolingLayerTB(Layer):
     def __init__(self):
-        self.name = 'pooling_layer'
+        self.name = 'avg_pooling_layer'
         Layer.__init__(self,self.name)
 
     # update stimulus generation
@@ -28,7 +28,7 @@ class PoolingLayerTB(Layer):
             kernel_rows=self.param['kernel_size'],
             kernel_cols=self.param['kernel_size'],
             stride_rows=self.param['stride'],
-            stride_cols=self.param['stride']
+            stride_cols=self.param['stride'],
         )
 
         # update parameters
@@ -69,7 +69,7 @@ class PoolingLayerTB(Layer):
 
     # update layer generation
     def gen_layer(self,src_path,header_path):
-        pooling.gen_pooling_layer(
+        avg_pooling.gen_avg_pooling_layer(
             self.name,
             self.param,
             os.path.join(src_path,'{}.cpp'.format(self.name)),
@@ -77,5 +77,5 @@ class PoolingLayerTB(Layer):
         )
 
 if __name__ == '__main__':
-    pooling_layer_tb = PoolingLayerTB()
-    pooling_layer_tb.main(sys.argv[1:])
+    avg_pooling_layer_tb = AvgPoolingLayerTB()
+    avg_pooling_layer_tb.main(sys.argv[1:])

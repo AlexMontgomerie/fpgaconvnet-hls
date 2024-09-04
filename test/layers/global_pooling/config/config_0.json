@@ -1,0 +1,12 @@
+{
+    "type": "GLOBAL_POOLING",
+    "rows_in": 8,
+    "cols_in": 8,
+    "channels_in": 32,
+    "coarse": 1,
+    "coarse_in": 1,
+    "coarse_out": 1,
+    "batch_size": 1,
+    "data_width": 16,
+    "description": "layer name: pool1, net name: resnet.prototxt"
+}
