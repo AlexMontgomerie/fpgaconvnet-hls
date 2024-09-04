@@ -57,5 +57,5 @@ partition_*/
 
 fpgaconvnet/hls/hardware/system.hpp
 **/build/**
-# /test/**/*.json
+/test/**/*.json
 /test/**/*.toml
