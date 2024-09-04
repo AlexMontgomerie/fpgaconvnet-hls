@@ -70,8 +70,9 @@ void {name}(
     
 #pragma HLS INLINE OFF
 
-#pragma HLS STREAM variable=in_1 depth=64
-#pragma HLS STREAM variable=in_2 depth=64
+// depth may need to be adjusted to avoid deadlocks
+#pragma HLS STREAM variable=in_1 depth=16284
+#pragma HLS STREAM variable=in_2 depth=16284
 #pragma HLS STREAM variable=out 
 
 #pragma HLS ARRAY_PARTITION variable=in_1 complete dim=0

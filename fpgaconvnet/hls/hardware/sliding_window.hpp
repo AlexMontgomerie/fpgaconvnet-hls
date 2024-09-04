@@ -95,10 +95,10 @@ void sliding_window_line_shift(
         sliding_window_t pixel;
 
         // pixel padding
-        if( row_index < pad_bottom ) {
+        if( row_index < pad_top ) {
             pixel = 0;
         }
-        else if ( row_index > rows+pad_bottom-1 ) {
+        else if ( row_index > rows+pad_top-1 ) {
             pixel = 0;
         }
         else if ( col_index < pad_left ) {

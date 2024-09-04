@@ -11,6 +11,8 @@ from fpgaconvnet.hls.generate.partition_template import *
 
 from fpgaconvnet.hls.generate.layers.convolution        import gen_convolution_layer
 from fpgaconvnet.hls.generate.layers.pooling            import gen_pooling_layer
+from fpgaconvnet.hls.generate.layers.avg_pooling        import gen_avg_pooling_layer
+from fpgaconvnet.hls.generate.layers.global_pooling     import gen_global_pooling_layer
 from fpgaconvnet.hls.generate.layers.relu               import gen_relu_layer
 from fpgaconvnet.hls.generate.layers.inner_product      import gen_inner_product_layer
 from fpgaconvnet.hls.generate.layers.squeeze            import gen_squeeze_layer
@@ -98,13 +100,19 @@ class GeneratePartition:
                 os.path.join(self.output_path, "include", f"{layer.name}.hpp")
             ]
             # create hardware for each layer
+            print(f"--------- Generating layer {layer.name} ---------")
             if layer.type == fpgaconvnet_pb2.layer.layer_type.CONVOLUTION:
                 fn_args.append(f"{layer.name}_weights")
                 if layer.parameters.has_bias == 1:
                     fn_args.append(f"{layer.name}_biases")
                 gen_convolution_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.POOLING:
-                gen_pooling_layer(*args)
+                if layer.name.startswith("Max"):
+                    gen_pooling_layer(*args)
+                elif layer.name.startswith("Average"):
+                    gen_avg_pooling_layer(*args)
+            if layer.type == fpgaconvnet_pb2.layer.layer_type.AVERAGE_POOLING:
+                gen_global_pooling_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.CONCAT:
                 gen_concat_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.RELU:
@@ -161,6 +169,8 @@ class GeneratePartition:
                 if layer_enum.from_proto_layer_type(layer.type) == layer_enum.LAYER_TYPE.Convolution:
                     transformed_weights = onnx_data.get_weights_convolution(weights_raw, layer, wr_factor=wr_factor)
                 elif layer_enum.from_proto_layer_type(layer.type) == layer_enum.LAYER_TYPE.InnerProduct:
+                    #TODO: Support transA and transB parameters
+                    weights_raw = weights_raw.T
                     transformed_weights = onnx_data.get_weights_inner_product(weights_raw, layer, wr_factor=wr_factor)
                 ## get the output path for the weights
                 output_path = os.path.join(self.output_path, "data", f"{layer.name}_weights")
@@ -241,6 +251,31 @@ class GeneratePartition:
         for layer in self.partition.layers:
             include +=f"#include \"{layer.name}.hpp\"\n"
 
+        # get input, weight and output data width
+        if (self.partition.layers[0].parameters.input_t.width != 0):
+            input_data_width = self.partition.layers[0].parameters.input_t.width
+        elif (self.partition.layers[0].parameters.data_t.width != 0):
+            input_data_width = self.partition.layers[0].parameters.data_t.width
+        else:
+            raise ValueError("Input data width not found")
+        
+        if (self.partition.weights_reloading_layer != "None"):
+            for layer in self.partition.layers:
+                if (layer.name == self.partition.weights_reloading_layer):
+                    if (layer.parameters.weight_t.width != 0):
+                        weight_data_width = layer.parameters.weight_t.width
+                    else:
+                        raise ValueError("Weight data width not found")
+        else: 
+            weight_data_width = 0
+        
+        if (self.partition.layers[-1].parameters.output_t.width != 0):
+            output_data_width = self.partition.layers[-1].parameters.output_t.width
+        elif (self.partition.layers[-1].parameters.data_t.width != 0):
+            output_data_width = self.partition.layers[-1].parameters.data_t.width
+        else:
+            raise ValueError("Output data width not found")
+
         # HEADER
         network_header = network_header_template.format(
             name        =self.name,
@@ -262,9 +297,9 @@ class GeneratePartition:
             wr_factor   =self.partition.weights_reloading_factor,
             wr_flag     =int(self.partition.weights_reloading_layer != "None"),
             DMA_WIDTH   =self.port_width,
-            input_data_width=self.partition.layers[0].parameters.input_t.width,
-            weight_data_width=self.partition.layers[0].parameters.weight_t.width,
-            output_data_width=self.partition.layers[-1].parameters.data_t.width,
+            input_data_width=input_data_width,
+            weight_data_width=weight_data_width,
+            output_data_width=output_data_width,
             include     =include
         )
 
