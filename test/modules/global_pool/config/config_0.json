@@ -1,0 +1,8 @@
+{
+    "type": "GLOBAL_POOL",
+    "rows": 40,
+    "cols": 40,
+    "channels": 4,
+    "batch_size": 1,
+    "description": "module name: global_pool"
+}

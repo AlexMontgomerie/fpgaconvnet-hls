@@ -5,7 +5,8 @@ fork_template = """
 {indent}    {NAME}_COLS,
 {indent}    {NAME}_CHANNELS,
 {indent}    {NAME}_COARSE,
-#if {NAME}_KERNEL_SIZE_X > 1 || {NAME}_KERNEL_SIZE_Y > 1
+{_if}       {NAME}_KERNEL_SIZE_X > 1 || {NAME}_KERNEL_SIZE_Y > 1
+{_if_conv}  {NAME}_KERNEL_SIZE_X > 1 || {LAYER_NAME}_KERNEL_SIZE_Y > 1 || {LAYER_NAME}_STRIDE_X > 1 || {NAME}_STRIDE_Y > 1
 {indent}    {NAME}_KERNEL_SIZE_X,
 {indent}    {NAME}_KERNEL_SIZE_Y,
 #endif
@@ -16,10 +17,26 @@ fork_template = """
 def gen_fork_module(name,input_stream,output_stream,
         fork_t="data_t",indent=0):
     return fork_template.format(
+        LAYER_NAME      =name.upper(),
         NAME            =name.upper(),
         input_stream    =input_stream,
         output_stream   =output_stream,
         fork_t          =fork_t,
+        _if             ="#if",
+        _if_conv        ="//",
+        indent          =" "*indent
+    )
+    
+def gen_conv_fork_module(layer_name, name,input_stream,output_stream,
+        fork_t="data_t",indent=0):
+    return fork_template.format(
+        LAYER_NAME      =layer_name.upper(),
+        NAME            =name.upper(),
+        input_stream    =input_stream,
+        output_stream   =output_stream,
+        fork_t          =fork_t,
+        _if             ="//",
+        _if_conv        ="#if",
         indent          =" "*indent
     )
 

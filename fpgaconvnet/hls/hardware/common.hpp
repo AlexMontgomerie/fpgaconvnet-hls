@@ -18,6 +18,7 @@
 #ifndef COMMON_HPP_
 #define COMMON_HPP_
 
+#include <ap_int.h>
 #include <ap_fixed.h>
 #include "hls_stream.h"
 #include "hls_math.h"
@@ -52,7 +53,7 @@
 /* #define stream_t(x) hlslib::Stream<x> */
 
 // default data types
-typedef unsigned long mem_int;
+typedef ap_uint<64> mem_int;
 typedef ap_axis<64,1,1,1> axi_stream_t;
 typedef hls::stream<axi_stream_t> axi_stream_hw_t;
 

@@ -64,6 +64,11 @@ void reload_weights(
 );
 #endif
 
+#define {NAME}_DMA_WIDTH            {DMA_WIDTH}
+#define {NAME}_IN_DATA_WIDTH        {input_data_width}
+#define {NAME}_WEIGHTS_DATA_WIDTH   {weight_data_width}
+#define {NAME}_OUT_DATA_WIDTH       {output_data_width}
+
 void process(
     int weights_reloading_index,
     volatile mem_int in_hw[{NAME}_PORTS_IN][{NAME}_SIZE_IN],
@@ -114,7 +119,9 @@ void reload_weights(
         {NAME}_WR_CHANNELS_IN,
         {NAME}_WR_PORTS_IN,
         {NAME}_WR_STREAMS_IN,
-        {wr_layer}_weight_t
+        {wr_layer}_weight_t,
+        {NAME}_DMA_WIDTH,
+        {NAME}_WEIGHTS_DATA_WIDTH
     >(wr_hw,wr);
 
     weights_reloading<
@@ -150,7 +157,9 @@ void process(
         {NAME}_CHANNELS_IN,
         {NAME}_PORTS_IN,
         {NAME}_STREAMS_IN,
-        {name}_input_t
+        {name}_input_t,
+        {NAME}_DMA_WIDTH,
+        {NAME}_IN_DATA_WIDTH
     >(in_hw,in);
 
     int mode = 0;
@@ -165,7 +174,9 @@ void process(
         {NAME}_PORTS_OUT,
         {NAME}_STREAMS_OUT,
         {NAME}_WEIGHTS_RELOADING_FACTOR,
-        {name}_output_t
+        {name}_output_t,
+        {NAME}_DMA_WIDTH,
+        {NAME}_OUT_DATA_WIDTH
     >(weights_reloading_index,out,out_hw);
 
 }}
@@ -244,16 +255,18 @@ int main()
 
 #if {NAME}_WEIGHTS_RELOADING_FLAG
         static mem_int weights[{NAME}_PORTS_WR][{NAME}_SIZE_WR] = {{0}};
-#endif
 
         // load weights
+        printf("LOADING WEIGHTS \\n");
         load_net_weights<
             {NAME}_PORTS_WR,
             {NAME}_SIZE_WR,
             {NAME}_WEIGHTS_RELOADING_FACTOR
         >("{weights_reloading_path}", weights, wr_index);
+#endif
 
         // load valid output
+        printf("LOADING VALID OUTPUT DATA \\n");
         load_net_data<
             {NAME}_PORTS_OUT,
             {NAME}_BATCH_SIZE,
@@ -267,12 +280,18 @@ int main()
         printf("RUNNING NETWORK \\n");
 
         // perform weights reloading
+#if {NAME}_WEIGHTS_RELOADING_FLAG
         if( wr_index > 0 ) {{
             fpgaconvnet_ip(1,wr_index,weights,test_in,test_out);
         }}
+#endif   
 
         // run the network
+#if {NAME}_WEIGHTS_RELOADING_FLAG
         fpgaconvnet_ip(0,wr_index,weights,test_in,test_out);
+#else
+        fpgaconvnet_ip(0,wr_index,test_in,test_out);
+#endif
 
         // check array is correct
         for(int i=0; i<{NAME}_PORTS_OUT;i++) {{
@@ -286,5 +305,3 @@ int main()
     return err;
 }}
 """
-
-

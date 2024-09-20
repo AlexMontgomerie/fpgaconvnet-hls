@@ -1,0 +1,12 @@
+{
+    "type": "ELTWISE_MUL",
+    "rows_in": 28,
+    "cols_in": 28,
+    "channels_in": 64,
+    "coarse": 4,
+    "coarse_in": 4,
+    "coarse_out": 4,
+    "batch_size": 1,
+    "data_width": 16,
+    "description": "layer name: inception_3b/relu_pool_proj, net name: googlenet.prototxt"
+}

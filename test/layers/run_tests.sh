@@ -48,6 +48,7 @@ function run_test {
 
     echo "RUNNING TEST ${1}"
     # GENERATE INPUTS
+    mkdir -p include
     mkdir -p data/test_${1}
     python gen_layer.py -c config/config_${1}.json -o $PWD/data/test_${1} -s src/ -h include/ -t tb/
     # RUN TEST

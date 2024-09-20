@@ -79,8 +79,9 @@ void mem_write(
         streams_loop: for(unsigned stream_index=0; stream_index<streams; stream_index++) {
             type_t stream_cache = out[stream_index].read();
             unsigned int port_index = (int) (stream_index/dma_channels);
-            port_cache[port_index] |= ( ( stream_cache.range() & bit_mask ) <<
-                    ( ( stream_index%dma_channels ) * data_width ) );
+            type_t write_value; 
+            write_value.range() = stream_cache.range() & bit_mask;
+            port_cache[port_index] |= (stream_cache.range() & bit_mask) * mem_t(1) << (stream_index%dma_channels)*data_width;
         }
 
         port_write_loop: for (unsigned port_index=0; port_index < ports; port_index++) {

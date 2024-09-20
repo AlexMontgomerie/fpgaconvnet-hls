@@ -1,24 +1,74 @@
 {
-    "buffer_depth": 0,
-    "rows_in": 1,
-    "cols_in": 1,
-    "channels_in": 10,
-    "filters": 10,
-    "kernel_size": 1,
-    "stride": 1,
-    "groups": 1,
-    "pad": 0,
-    "coarse_in": 1,
-    "coarse_out": 1,
-    "coarse_group": 1,
-    "fine": 1,
-    "wr_factor": 1,
     "batch_size": 1,
-    "input_width": 16,
-    "acc_width": 30,
-    "weight_width": 16,
-    "biases_width": 16,
-    "output_width": 16,
+    "rows_in": 32,
+    "cols_in": 32,
+    "channels_in": 16,
+    "rows_out": 16,
+    "cols_out": 16,
+    "channels_out": 32,
+    "coarse_in": 16,
+    "coarse_out": 8,
+    "coarse_group": 1,
+    "groups": 1,
+    "fine": 1,
+    "filters": 32,
+    "pad_top": 0,
+    "pad_right": 0,
+    "pad_bottom": 0,
+    "pad_left": 0,
+    "kernel_rows": 1,
+    "kernel_cols": 1,
+    "kernel_size": [
+      1,
+      1
+    ],
+    "stride_rows": 2,
+    "stride_cols": 2,
+    "stride": [
+      2,
+      2
+    ],
+    "mem_bw_in": 100.0,
+    "mem_bw_out": 100.0,
+    "data_t": {},
+    "weight_t": {
+      "width": 16,
+      "binary_point": 15
+    },
+    "acc_t": {
+      "width": 30,
+      "binary_point": 23
+    },
+    "input_t": {
+      "width": 16,
+      "binary_point": 8
+    },
+    "output_t": {
+      "width": 16,
+      "binary_point": 8
+    },
     "has_bias": 1,
-    "description": "no spatial dim, no channels, no filters. No parallelism. Kernel Size =1"
-}
+    "use_uram": false,
+    "block_floating_point": false,
+    "on_chip_addr_range": 4,
+    "off_chip_buffer_size": 0,
+    "off_chip_interval": -1,
+    "stream_weights": 0,
+    "stream_inputs": [
+      false
+    ],
+    "stream_outputs": [
+      false
+    ],
+    "input_compression_ratio": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "output_compression_ratio": [
+      1.0
+    ],
+    "weight_compression_ratio": [
+      1.0
+    ]
+  }

@@ -23,12 +23,12 @@ class PoolingLayerTB(Layer):
             self.param['rows_in'],
             self.param['cols_in'],
             self.param['channels_in'],
-            pool_type=self.param['pool_type'],
-            kernel_size=self.param['kernel_size'],
-            stride=self.param['stride'],
-            pad=self.param['pad'],
             coarse=self.param['coarse'],
-            data_width=self.param["data_width"]
+            pool_type=self.param['pool_type'],
+            kernel_rows=self.param['kernel_size'],
+            kernel_cols=self.param['kernel_size'],
+            stride_rows=self.param['stride'],
+            stride_cols=self.param['stride']
         )
 
         # update parameters

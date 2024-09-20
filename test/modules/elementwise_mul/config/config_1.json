@@ -1,0 +1,12 @@
+{
+    "type": "EltWiseMUL",
+    "rows": 7,
+    "cols": 7,
+    "channels": 64,
+    "rows_out": 28,
+    "cols_out": 28,
+    "channels_out": 64,
+    "batch_size": 1,
+    "wordlength":16, 
+    "description": "module name: elementwise_add, layer name: , net name: "
+}

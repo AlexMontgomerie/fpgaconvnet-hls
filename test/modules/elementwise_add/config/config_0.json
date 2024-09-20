@@ -1,0 +1,8 @@
+{
+    "type": "EltWiseADD",
+    "rows": 14,
+    "cols": 14,
+    "channels": 64,
+    "batch_size": 1,
+    "description": "module name: elementwise_add, layer name: , net name: "
+}
