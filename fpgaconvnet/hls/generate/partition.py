@@ -9,29 +9,36 @@ from google.protobuf.json_format import MessageToDict
 
 from fpgaconvnet.hls.generate.partition_template import *
 
-from fpgaconvnet.hls.generate.layers.convolution    import gen_convolution_layer
-from fpgaconvnet.hls.generate.layers.pooling        import gen_pooling_layer
-from fpgaconvnet.hls.generate.layers.relu           import gen_relu_layer
-from fpgaconvnet.hls.generate.layers.inner_product  import gen_inner_product_layer
-from fpgaconvnet.hls.generate.layers.squeeze        import gen_squeeze_layer
+from fpgaconvnet.hls.generate.layers.convolution        import gen_convolution_layer
+from fpgaconvnet.hls.generate.layers.pooling            import gen_pooling_layer
+from fpgaconvnet.hls.generate.layers.avg_pooling        import gen_avg_pooling_layer
+from fpgaconvnet.hls.generate.layers.global_pooling     import gen_global_pooling_layer
+from fpgaconvnet.hls.generate.layers.relu               import gen_relu_layer
+from fpgaconvnet.hls.generate.layers.inner_product      import gen_inner_product_layer
+from fpgaconvnet.hls.generate.layers.squeeze            import gen_squeeze_layer
+from fpgaconvnet.hls.generate.layers.split              import gen_split_layer
+from fpgaconvnet.hls.generate.layers.elementwise_add    import gen_elementwise_add_layer
+from fpgaconvnet.hls.generate.layers.elementwise_mul    import gen_elementwise_mul_layer
 from fpgaconvnet.hls.generate.util import *
 
 import fpgaconvnet.hls.tools.onnx_data as onnx_data
 from fpgaconvnet.hls.tools.array_init import array_init
 
 import fpgaconvnet.proto.fpgaconvnet_pb2 as fpgaconvnet_pb2
-import fpgaconvnet.tools.onnx_helper as onnx_helper
+from fpgaconvnet.parser import Parser
+import fpgaconvnet.parser.onnx.helper as onnx_helper
 import fpgaconvnet.tools.layer_enum as layer_enum
 
 class GeneratePartition:
 
-    def __init__(self, name, partition, model, sess, output_path):
+    def __init__(self, name, partition, model, sess, output_path, port_width=64):
 
         self.name = name
         self.partition = partition
         self.output_path = output_path
         self.model = model
         self.sess = sess
+        self.port_width = port_width
 
         # make output path directory
         self.mkdir(self.output_path)
@@ -81,6 +88,8 @@ class GeneratePartition:
         for layer in self.partition.layers:
             # get parameters of layer
             parameters = MessageToDict(layer.parameters, preserving_proto_field_name=True)
+            # FIXME adding buffer depth to params in a hacky way
+            parameters['buffer_depth'] = layer.streams_in[0].buffer_depth
             # init function arguments for this layer
             fn_args = []
             # init hardware generation args
@@ -91,13 +100,19 @@ class GeneratePartition:
                 os.path.join(self.output_path, "include", f"{layer.name}.hpp")
             ]
             # create hardware for each layer
+            print(f"--------- Generating layer {layer.name} ---------")
             if layer.type == fpgaconvnet_pb2.layer.layer_type.CONVOLUTION:
                 fn_args.append(f"{layer.name}_weights")
                 if layer.parameters.has_bias == 1:
                     fn_args.append(f"{layer.name}_biases")
                 gen_convolution_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.POOLING:
-                gen_pooling_layer(*args)
+                if layer.name.startswith("Max"):
+                    gen_pooling_layer(*args)
+                elif layer.name.startswith("Average"):
+                    gen_avg_pooling_layer(*args)
+            if layer.type == fpgaconvnet_pb2.layer.layer_type.AVERAGE_POOLING:
+                gen_global_pooling_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.CONCAT:
                 gen_concat_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.RELU:
@@ -111,6 +126,12 @@ class GeneratePartition:
                 gen_inner_product_layer(*args)
             if layer.type == fpgaconvnet_pb2.layer.layer_type.SQUEEZE:
                 gen_squeeze_layer(*args)
+            if layer.type == fpgaconvnet_pb2.layer.layer_type.ELTWISE:
+                if layer.name.startswith("Add"):
+                    gen_elementwise_add_layer(*args)
+                elif layer.name.startswith("Mul"):
+                    gen_elementwise_mul_layer(*args)
+                else: raise ValueError("Operation type can only be Add or Mul")
             # create layer call
             for stream_in in layer.streams_in:
                 fn_args.append(stream_in.name)
@@ -148,6 +169,8 @@ class GeneratePartition:
                 if layer_enum.from_proto_layer_type(layer.type) == layer_enum.LAYER_TYPE.Convolution:
                     transformed_weights = onnx_data.get_weights_convolution(weights_raw, layer, wr_factor=wr_factor)
                 elif layer_enum.from_proto_layer_type(layer.type) == layer_enum.LAYER_TYPE.InnerProduct:
+                    #TODO: Support transA and transB parameters
+                    weights_raw = weights_raw.T
                     transformed_weights = onnx_data.get_weights_inner_product(weights_raw, layer, wr_factor=wr_factor)
                 ## get the output path for the weights
                 output_path = os.path.join(self.output_path, "data", f"{layer.name}_weights")
@@ -156,13 +179,16 @@ class GeneratePartition:
                     with open(f'{output_path}_{weights_reloading_index}.csv', 'w') as f:
                         f.write(array_init(transformed_weights[weights_reloading_index]))
                 ## flatten weights into a stream
+                weight_int_width = layer.parameters.weight_t.width - \
+                    layer.parameters.weight_t.binary_point
                 weights_stream =  onnx_data._convert_fixed_port_stream(
                         transformed_weights.reshape(-1),
-                        total_width=layer.parameters.weight_width,
-                        int_width=layer.parameters.weight_width//2)
+                        total_width=layer.parameters.weight_t.width,
+                        int_width=weight_int_width)
                 ## save to .dat format
+                print(f"Writing weights stream to .dat file")
                 onnx_data._fixed_point_stream_to_dat(weights_stream, output_path=output_path,
-                        streams=1, port_width=64, ports=1)
+                        streams=1, port_width=self.port_width, ports=1)
                 # add weight generators (if bias present)
                 if layer.parameters.has_bias == 1:
                     ## add a biases generator
@@ -178,13 +204,19 @@ class GeneratePartition:
                     with open(f'{output_path}.csv', 'w') as f:
                         f.write(array_init(transformed_biases[0]))
                     ## flatten biases into a stream
+                    # FIXME check if bias width should be accum width or smth else
+                    acc_int_width = layer.parameters.acc_t.width - \
+                        layer.parameters.acc_t.binary_point
                     biases_stream = onnx_data._convert_fixed_port_stream(
                             transformed_biases.reshape(-1),
-                            total_width=layer.parameters.biases_width,
-                            int_width=layer.parameters.biases_width//2)
+                            total_width=layer.parameters.acc_t.width,
+                            int_width=acc_int_width)
                     ## save to .dat format
+                    # onnx_data._fixed_point_stream_to_dat(biases_stream, output_path=output_path,
+                    #         streams=1, port_width=64, ports=1)
+                    print("Writing biases stream to .dat file")
                     onnx_data._fixed_point_stream_to_dat(biases_stream, output_path=output_path,
-                            streams=1, port_width=64, ports=1)
+                            streams=1, port_width=self.port_width, ports=1)
 
         # get weights definitions and intialisation
         self.weights_def = "\n\n".join([w.generate_def() for w in weights])
@@ -219,6 +251,31 @@ class GeneratePartition:
         for layer in self.partition.layers:
             include +=f"#include \"{layer.name}.hpp\"\n"
 
+        # get input, weight and output data width
+        if (self.partition.layers[0].parameters.input_t.width != 0):
+            input_data_width = self.partition.layers[0].parameters.input_t.width
+        elif (self.partition.layers[0].parameters.data_t.width != 0):
+            input_data_width = self.partition.layers[0].parameters.data_t.width
+        else:
+            raise ValueError("Input data width not found")
+        
+        if (self.partition.weights_reloading_layer != "None"):
+            for layer in self.partition.layers:
+                if (layer.name == self.partition.weights_reloading_layer):
+                    if (layer.parameters.weight_t.width != 0):
+                        weight_data_width = layer.parameters.weight_t.width
+                    else:
+                        raise ValueError("Weight data width not found")
+        else: 
+            weight_data_width = 0
+        
+        if (self.partition.layers[-1].parameters.output_t.width != 0):
+            output_data_width = self.partition.layers[-1].parameters.output_t.width
+        elif (self.partition.layers[-1].parameters.data_t.width != 0):
+            output_data_width = self.partition.layers[-1].parameters.data_t.width
+        else:
+            raise ValueError("Output data width not found")
+
         # HEADER
         network_header = network_header_template.format(
             name        =self.name,
@@ -239,6 +296,10 @@ class GeneratePartition:
             WR_LAYER    =self.partition.weights_reloading_layer.upper(),
             wr_factor   =self.partition.weights_reloading_factor,
             wr_flag     =int(self.partition.weights_reloading_layer != "None"),
+            DMA_WIDTH   =self.port_width,
+            input_data_width=input_data_width,
+            weight_data_width=weight_data_width,
+            output_data_width=output_data_width,
             include     =include
         )
 
@@ -299,24 +360,34 @@ class GeneratePartition:
         # get the input name and shape
         input_name  = self.sess.get_inputs()[0].name
         input_shape = self.sess.get_inputs()[0].shape
-        # TODO: check data is right shape
+        # check data is right shape
+        if input_shape != list(input_data.shape):
+            raise ValueError(f"expected input shape: {input_shape}, data shape: {list(input_data.shape)}")
         # save input layer
         # TODO add bitwidth
-        input_node = self.partition.input_node
+        if len(self.partition.input_nodes) > 1:
+            # check if multiple input nodes
+            raise NotImplementedError("Multiple input nodes not currently supported.")
+        input_node = self.partition.input_nodes[0]
         input_stream = np.array( self.sess.run([input_node], { input_name : input_data } )[0] )
         input_stream = np.moveaxis(input_stream, 1, -1)
         input_stream = onnx_data._convert_fixed_port_stream(input_stream.reshape(-1))
+        print("Writing input stream to .dat file")
         onnx_data._fixed_point_stream_to_dat(input_stream,
                 os.path.join(self.output_path, f"data/{self.partition.layers[0].name}_in"),
-                streams=int(self.partition.layers[0].parameters.coarse_in))
+                streams=int(self.partition.layers[0].parameters.coarse_in), port_width=self.port_width)
         # save output layer
-        output_node = self.partition.output_node
+        if len(self.partition.output_nodes) > 1:
+            # check if multiple output nodes
+            raise NotImplementedError("Multiple output nodes not currently supported.")
+        output_node = self.partition.output_nodes[0]
         output_stream = np.array( self.sess.run([output_node], { input_name : input_data } )[0] )
         output_stream = np.moveaxis(output_stream, 1, -1)
         output_stream = onnx_data._convert_fixed_port_stream(output_stream.reshape(-1))
+        print("Writing valid output stream to .dat file")
         onnx_data._fixed_point_stream_to_dat(output_stream,
                 os.path.join(self.output_path, f"data/{self.partition.layers[-1].name}_out"),
-                streams=int(self.partition.layers[-1].parameters.coarse_out))
+                streams=int(self.partition.layers[-1].parameters.coarse_out), port_width=self.port_width)
 
     """
     Vivado HLS functions

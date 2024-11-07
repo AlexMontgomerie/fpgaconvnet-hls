@@ -508,9 +508,14 @@ int check_array_equal(
     int err = 0;
     for(int i=0;i<SIZE;i++) {
         for(int j=0;j<STREAMS;j++) {
+        	mem_int temp = test[i];
+        	mem_int temp_valid = valid[i];
+            // std::cout<< "at i = " << i << ", j = " << j << ", 64 bit temp = " << temp << ", temp_valid = " << temp_valid << std::endl;
             data_t tmp, tmp_valid;
-            tmp.range()         = (test[i] >> j*data_width) & bit_mask;
-            tmp_valid.range()   = (valid[i]>> j*data_width) & bit_mask;
+            tmp.range()         = (temp >> j*data_width) & bit_mask;
+            tmp_valid.range()   = (temp_valid >> j*data_width) & bit_mask;
+            // std::cout << "at i = " << i << ", j = " << j << ", tmp = " << tmp << ", tmp_valid = " << tmp_valid << std::endl;
+            // std::cout << "at i = " << i << ", j = " << j << ", bitwise tmp = " << tmp.range() << ", bitwise tmp_valid = " << tmp_valid.range() << std::endl;
             if(
                 (tmp.to_float() > tmp_valid.to_float()+ERROR_TOLERANCE) ||
                 (tmp.to_float() < tmp_valid.to_float()-ERROR_TOLERANCE)
@@ -532,36 +537,71 @@ template<
     int SIZE,
     int WR_FACTOR=1
 >
+// void load_net_weights(
+//     std::string filepath,
+//     volatile mem_int data[INPUTS][DIVIDE(SIZE,INPUTS)],
+//     int wr_index = 0
+// )
+// {
+//     // read in file
+//     const char *filepath_cstr = filepath.c_str();
+//     FILE * fp = fopen(filepath_cstr,"r");
+
+//     // check file opened
+//     if (fp == NULL) {
+//         perror("Failed to load weights at");
+//     }
+
+//     for(int w=0;w<WR_FACTOR;w++) {
+//         for(int i=0;i<INPUTS;i++) {
+//             for(int j=0;j<DIVIDE(SIZE,INPUTS);j++) {
+//                 // read in the value from the file
+//                 mem_int val;
+//                 fscanf(fp,"%l\n", &val);
+//                 // add to the input if correct weights reloading index
+//                 if ( w == wr_index ) {
+//                     data[i][j] = val;
+//                 }
+//            }
+//         }
+//     }
+//     // close file
+//     fclose(fp);
+// }
 void load_net_weights(
     std::string filepath,
-    volatile mem_int data[INPUTS][DIVIDE(SIZE,INPUTS)],
+    volatile mem_int data[INPUTS][DIVIDE(SIZE, INPUTS)],
     int wr_index = 0
-)
-{
+) {
     // read in file
     const char *filepath_cstr = filepath.c_str();
-    FILE * fp = fopen(filepath_cstr,"r");
+    std::ifstream fp(filepath_cstr);
 
     // check file opened
-    if (fp == NULL) {
+    if (!fp.is_open()) {
         perror("Failed to load weights at");
+        return;
     }
 
-    for(int w=0;w<WR_FACTOR;w++) {
-        for(int i=0;i<INPUTS;i++) {
-            for(int j=0;j<DIVIDE(SIZE,INPUTS);j++) {
+    for (int w = 0; w < WR_FACTOR; w++) {
+        for (int i = 0; i < INPUTS; i++) {
+            for (int j = 0; j < DIVIDE(SIZE, INPUTS); j++) {
                 // read in the value from the file
-                mem_int val;
-                fscanf(fp,"%l\n", &val);
-                // add to the input if correct weights reloading index
-                if ( w == wr_index ) {
-                    data[i][j] = val;
-                }
-           }
+                std::string line;
+                if (std::getline(fp, line)) {
+                    mem_int val(line.c_str(), 10);
+                    // add to the input if correct weights reloading index
+                    if (w == wr_index) {
+                        data[i][j] = val;
+                        mem_int non_volatile_val = data[i][j];
+                        // std::cout << "data[" << i << "][" << j << "] = " << non_volatile_val.to_string(10) << std::endl;
+                    }
+                } 
+            }
         }
     }
     // close file
-    fclose(fp);
+    fp.close();
 }
 
 template<
@@ -576,6 +616,45 @@ template<
     unsigned int DATA_WIDTH = 16,
     typename mem_t = mem_int
 >
+// void load_net_data(
+//     std::string filepath,
+//     mem_t data[INPUTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WR_FACTOR],
+//     int wr_index = 0
+// )
+// {
+
+//     // read in file
+//     const char *filepath_cstr = filepath.c_str();
+//     FILE * fp = fopen(filepath_cstr,"r");
+
+//     // check file opened
+//     if (fp == NULL) {
+//         perror("Failed to load data at");
+//     }
+
+//     // get variables
+//     int channels_per_stream = DIVIDE(CHANNELS,STREAMS);
+//     int dma_channels = DIVIDE(DMA_WIDTH,DATA_WIDTH);
+
+//     // save to array
+//     for(int i=0;i<BATCH_SIZE*ROWS*COLS;i++) {
+//         for(int j=0;j<WR_FACTOR;j++) {
+//             for(int k=0;k<channels_per_stream;k++) {
+//                 // read in the value from the file
+//                 mem_int val;
+//                 fscanf(fp,"%lu\n", &val);
+//                 // specific weights reloading index
+//                 if (j == wr_index) {
+//                     int out_index = i*channels_per_stream*WR_FACTOR + j*channels_per_stream + k;
+//                     data[0][out_index] = val;
+//                     // std::cout << "data[0][" << out_index << "] = " << data[0][out_index] << std::endl;
+//                 }
+//             }
+//         }
+//     }
+//     // close file
+//     fclose(fp);
+// }
 void load_net_data(
     std::string filepath,
     mem_t data[INPUTS][BATCH_SIZE*ROWS*COLS*DIVIDE(CHANNELS,STREAMS)*WR_FACTOR],
@@ -584,12 +663,12 @@ void load_net_data(
 {
 
     // read in file
-    const char *filepath_cstr = filepath.c_str();
-    FILE * fp = fopen(filepath_cstr,"r");
+    std::ifstream fp(filepath);
 
     // check file opened
-    if (fp == NULL) {
+    if (!fp.is_open()) {
         perror("Failed to load data at");
+        return;
     }
 
     // get variables
@@ -601,18 +680,21 @@ void load_net_data(
         for(int j=0;j<WR_FACTOR;j++) {
             for(int k=0;k<channels_per_stream;k++) {
                 // read in the value from the file
-                mem_int val;
-                fscanf(fp,"%ld\n", &val);
-                // specific weights reloading index
-                if (j == wr_index) {
-                    int out_index = i*channels_per_stream*WR_FACTOR + j*channels_per_stream + k;
-                    data[0][out_index] = val;
+                std::string line;
+                if (std::getline(fp, line)) {
+                    mem_int val(line.c_str(), 10);
+                    // specific weights reloading index
+                    if (j == wr_index) {
+                        int out_index = i*channels_per_stream*WR_FACTOR + j*channels_per_stream + k;
+                        data[0][out_index] = val;
+                        // std::cout << "data[0][" << out_index << "] = " << data[0][out_index].to_string(10) << std::endl;
+                    }
                 }
             }
         }
     }
     // close file
-    fclose(fp);
+    fp.close();
 }
 
 template<

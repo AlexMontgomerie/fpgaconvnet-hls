@@ -147,7 +147,7 @@ void {name}_sliding_window(
 }}
 
 void {name}_fork(
-#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1
+#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1 && {NAME}_STRIDE_X == 1 && {NAME}_STRIDE_Y == 1
     stream_t({name}_input_t)  &in,
     stream_t({name}_output_t) out[{NAME}_COARSE_OUT]
 #else
@@ -162,7 +162,7 @@ void {name}_fork(
 
 void {name}_conv(
     const {name}_weight_t weights[DIVIDE({NAME}_WEIGHTS,{NAME}_COARSE_IN*{NAME}_COARSE_GROUP*{NAME}_COARSE_OUT*{NAME}_KERNEL_SIZE_X*{NAME}_KERNEL_SIZE_Y)][{NAME}_KERNEL_SIZE_X][{NAME}_KERNEL_SIZE_Y],
-#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1
+#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1 && {NAME}_STRIDE_X == 1 && {NAME}_STRIDE_Y == 1
     stream_t({name}_input_t) &in,
 #else
     stream_t({name}_input_t)  in[{NAME}_KERNEL_SIZE_X][{NAME}_KERNEL_SIZE_Y],
@@ -230,7 +230,7 @@ void {name}(
     #pragma HLS ARRAY_PARTITION variable=sw_out complete dim=0
 #endif
 
-#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1
+#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1 && {NAME}_STRIDE_X == 1 && {NAME}_STRIDE_Y == 1
     stream_t({name}_input_t) fork_out[{NAME}_COARSE_IN*{NAME}_COARSE_GROUP][{NAME}_COARSE_OUT];
 #else
     stream_t({name}_input_t) fork_out[{NAME}_COARSE_IN*{NAME}_COARSE_GROUP][{NAME}_COARSE_OUT][{NAME}_KERNEL_SIZE_X][{NAME}_KERNEL_SIZE_Y];
@@ -256,7 +256,7 @@ void {name}(
 
     {name}_coarse_in_loop: for(unsigned int i=0;i<{NAME}_COARSE_IN*{NAME}_COARSE_GROUP;i++) {{
         #pragma HLS unroll
-#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1
+#if {NAME}_KERNEL_SIZE_X == 1 && {NAME}_KERNEL_SIZE_Y == 1 && {NAME}_STRIDE_X == 1 && {NAME}_STRIDE_Y == 1
         {name}_fork(in[i], fork_out[i]);
 #else
         {name}_sliding_window(in[i], sw_out[i]);
@@ -318,7 +318,8 @@ def gen_convolution_layer(name, param, src_path, header_path):
     )
 
     # FORK MODULE INIT
-    fork = generate_fork.gen_fork_module(
+    fork = generate_fork.gen_conv_fork_module(
+        name, 
         name+"_fork",
         "in", "out",
         fork_t=f"{name}_input_t",
@@ -326,7 +327,8 @@ def gen_convolution_layer(name, param, src_path, header_path):
     )
 
     # CONV MODULE INIT
-    conv = generate_conv.gen_conv_module(
+    conv = generate_conv.gen_convolution_conv_module(
+        name, 
         name+"_conv",
         "in", "weights", "out",
         data_t=f"{name}_input_t",
@@ -406,16 +408,16 @@ def gen_convolution_layer(name, param, src_path, header_path):
         rows_out            =param['rows_out'],
         cols_out            =param['cols_out'],
         channels_out        =param['channels_out'],
-        input_width         =param['input_width'],
-        input_int_width     =param['input_width']//2,
-        output_width        =param['output_width'],
-        output_int_width    =param['output_width']//2,
-        acc_width           =param['acc_width'],
-        acc_int_width       =param['acc_width']//2,
-        weight_width        =param['weight_width'],
-        weight_int_width    =param['weight_width']//2,
-        biases_width        =param['biases_width'],
-        biases_int_width    =param['biases_width']//2,
+        input_width         =param['input_t']['width'],
+        input_int_width     =(param['input_t']['width'] - param['input_t']['binary_point']),
+        output_width        =param['output_t']['width'],
+        output_int_width    =(param['output_t']['width'] - param['output_t']['binary_point']),
+        acc_width           =param['acc_t']['width'],
+        acc_int_width       =(param['acc_t']['width'] - param['acc_t']['binary_point']),
+        weight_width        =param['weight_t']['width'],
+        weight_int_width    =(param['weight_t']['width'] - param['weight_t']['binary_point']),
+        biases_width        =param['acc_t']['width'],
+        biases_int_width    =(param['acc_t']['width'] - param['acc_t']['binary_point']),
         has_bias            =param['has_bias']
     )
 

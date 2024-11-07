@@ -51,7 +51,7 @@ int main()
     pool_top(in,out);
 
     // check the stream is correct
-    checkStreamEqual<pool_t>(out,out_valid);
+    err += checkStreamEqual<pool_t>(out,out_valid,false);
 
     return err;
 }

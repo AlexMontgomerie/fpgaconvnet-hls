@@ -3,10 +3,10 @@
     "buffer_depth" : 0,
     "rows_in": 1,
     "cols_in": 1,
-    "channels_in": 10,
-    "filters": 100,
-    "coarse_in": 1,
-    "coarse_out": 1,
+    "channels_in": 64,
+    "filters": 10,
+    "coarse_in": 2,
+    "coarse_out": 5,
     "fine": 1,
     "batch_size": 1,
     "wr_factor" : 1,
@@ -16,5 +16,5 @@
     "biases_width": 8,
     "output_width": 16,
     "has_bias": 1,
-    "description": "layer name: ip1, net name: lenet.prototxt"
+    "description": " "
 }

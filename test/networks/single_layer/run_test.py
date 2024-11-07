@@ -4,7 +4,9 @@ from PIL import Image
 
 from fpgaconvnet.hls.generate.network import GenerateNetwork
 
-import fpgaconvnet.tools.onnx_helper as onnx_helper
+from fpgaconvnet.parser import Parser
+import fpgaconvnet.parser.onnx.helper as onnx_helper
+
 
 # create instance of the network
 net = GenerateNetwork("single_layer", "single_layer.json", "single_layer.onnx")

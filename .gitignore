@@ -56,3 +56,6 @@ sd_card/
 partition_*/
 
 fpgaconvnet/hls/hardware/system.hpp
+**/build/**
+/test/**/*.json
+/test/**/*.toml

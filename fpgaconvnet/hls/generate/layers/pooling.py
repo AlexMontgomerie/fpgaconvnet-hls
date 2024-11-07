@@ -147,7 +147,7 @@ def gen_pooling_layer(name,param,src_path,header_path):
     pooling_layer_src = pooling_layer_template_src.format(
         name            =name,
         NAME            =name.upper(),
-        buffer_depth=max(param['buffer_depth'],2),
+        buffer_depth    =max(param['buffer_depth'],2),
         sliding_window  =sliding_window,
         pool            =pool
     )
@@ -175,8 +175,8 @@ def gen_pooling_layer(name,param,src_path,header_path):
         rows_out            =param['rows_out'],
         cols_out            =param['cols_out'],
         channels_out        =param['channels_out'],
-        data_width          =param['data_width'],
-        data_int_width      =param['data_width']//2,
+        data_width          =param['data_t']['width'],
+        data_int_width      =(param['data_t']['width']-param['data_t']['binary_point']),
     )
 
     # write source file
